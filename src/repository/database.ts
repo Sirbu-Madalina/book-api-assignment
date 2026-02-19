@@ -1,6 +1,19 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
+
+// Test the connection to the database
+export async function testConnection() {
+  try {
+    await connect();
+    await disconnect();
+    console.log('Database connection test completed (connect + disconnect)');
+  }
+  catch (error) {
+    console.log('Error testing database connection. Error: ' + error);
+  }
+}
 
 
+//Connect to the database
 export async function connect() {
   try {
     if (!process.env.DBHOST) {
@@ -10,7 +23,6 @@ export async function connect() {
 
     if (mongoose.connection.db) {
       await mongoose.connection.db.admin().command({ ping: 1 });
-      console.log("Connection established");
     }
     else {
       throw new Error('Database connection is not established');
@@ -22,10 +34,11 @@ export async function connect() {
   }
 }
 
+//Disconnect from the database
 export async function disconnect() {
   try {
     await mongoose.disconnect();
-    console.log ("Connection closed");
+    //console.log('Connection closed');
   }
   catch (error) {
     console.log('Error closing database connection. Error: ' + error);
