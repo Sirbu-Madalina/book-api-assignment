@@ -3,6 +3,7 @@ import { Document } from 'mongoose';
 export interface Book extends Document {
   title: string;
   author: string;
+  image?: string; //optional
   description: string;
   publishedYear: number;
   genre: string;

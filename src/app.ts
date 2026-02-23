@@ -8,7 +8,11 @@ dotenvFlow.config();
 const app: Application = express();
 
 export function startServer() {
-app.use('/api', routes);
+  
+//makes the app understand json
+  app.use(express.json());
+
+  app.use('/api', routes);
 
 //test connection to the database
   testConnection();
