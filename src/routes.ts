@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { createBook, getAllBooks, getProductById, updateProductByID, deleteProductByID } from './controllers/bookController';
-import {registerUser} from './controllers/authController';
+import {registerUser, loginUser} from './controllers/authController';
 const router: Router = Router();
 
 router.get('/', (req: Request, res: Response)=> {
@@ -9,6 +9,7 @@ router.get('/', (req: Request, res: Response)=> {
 
 //Auth
 router.post('/user/register', registerUser);
+router.post ('/user/login', loginUser);
 
 //CRUD
 router.post('/books', createBook);
