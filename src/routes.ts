@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { createBook, getAllBooks, getProductById, updateProductByID, deleteProductByID } from './controllers/bookController';
-import {registerUser, loginUser, verifyToken} from './controllers/authController';
+import { createBook, getAllBooks, getBookById, updateBookById, deleteBookById } from './controllers/bookController';import {registerUser, loginUser, verifyToken} from './controllers/authController';
 const router: Router = Router();
 
 
@@ -181,12 +180,10 @@ router.get('/books', getAllBooks);
  *       500:
  *         description: Server error
  */
-router.get('/books/:id', getProductById);
+router.get('/books/:id', getBookById);
 
-
-
-router.put ('/books/:id', verifyToken, updateProductByID);
-router.delete ('/books/:id', verifyToken, deleteProductByID);
+router.put('/books/:id', verifyToken, updateBookById);
+router.delete('/books/:id', verifyToken, deleteBookById);
 
 
 
