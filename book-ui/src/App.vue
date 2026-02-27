@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { isLoggedIn, logout } from "./services/auth";
 import { computed } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 
 const router = useRouter();
+const route = useRoute();
+
 const loggedIn = computed(() => isLoggedIn());
+const isAuthLayout = computed(() => route.meta.layout === "auth");
 
 function onLogout() {
   logout();
@@ -13,7 +16,7 @@ function onLogout() {
 </script>
 
 <template>
-  <header class="top">
+  <header v-if="!isAuthLayout" class="top">
     <h1>Book UI</h1>
 
     <nav class="nav">
@@ -23,14 +26,56 @@ function onLogout() {
     </nav>
   </header>
 
-  <main class="container">
+  <!-- If login page: render full-screen without container -->
+  <main v-if="!isAuthLayout" class="container">
     <RouterView />
   </main>
+
+  <RouterView v-else />
 </template>
 
 <style scoped>
-.top { display:flex; align-items:center; justify-content:space-between; padding:16px; border-bottom:1px solid #2b2b2b; }
-.nav { display:flex; gap:12px; align-items:center; }
-.container { max-width: 980px; margin: 0 auto; padding: 16px; }
-.btn { padding: 8px 12px; border: 1px solid #444; background: transparent; color: inherit; border-radius: 8px; cursor:pointer; }
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 28px;
+  background: #f7f3ee;
+  border-bottom: 1px solid rgba(31, 36, 48, 0.12);
+}
+
+.top h1 {
+  margin: 0;
+  font-size: 22px;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  letter-spacing: -0.02em;
+  color: #1f2430;
+}
+
+.nav {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+.btn {
+  padding: 10px 14px;
+  border: 1px solid rgba(31, 36, 48, 0.18);
+  background: transparent;
+  color: #1f2430;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.btn:hover {
+  background: rgba(31, 36, 48, 0.04);
+}
 </style>

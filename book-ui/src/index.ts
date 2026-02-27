@@ -6,6 +6,6 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", component: HomeView },
-    { path: "/login", component: LoginView },
+    { path: "/login", component: LoginView, meta: { layout: "auth" } },
   ],
 });

@@ -1,0 +1,24 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* <-- kills scrolling for the whole page */
+}
+
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f7f3ee;
+  color: #1f2430;
+}
+a {
+  color: #e5971a;
+  text-decoration: none;
+  font-weight: 600;
+}
+a:hover {
+  text-decoration: underline;
+}
