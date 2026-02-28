@@ -1,26 +1,37 @@
-const BASE_URL = "http://localhost:4000/api";
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
 
 function getToken() {
   return localStorage.getItem("token");
 }
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
-  const headers = new Headers(options.headers);
-
-  headers.set("Content-Type", "application/json");
-
   const token = getToken();
-  if (token) headers.set("auth-token", token);
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  const headers: HeadersInit = {
+    Accept: "application/json",
+    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { "auth-token": token } : {}),
+    ...(options.headers ?? {}),
+  };
 
-  // Try parse JSON if possible
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers,
+  });
+
+  // try json, if not possible -> fallback to text
+  const contentType = res.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+
+  const data = isJson ? await res.json().catch(() => null) : await res.text();
 
   if (!res.ok) {
-    // normalize errors
-    const message = data?.error || data?.message || res.statusText;
+    // support both JSON errors and text errors
+    const message =
+      typeof data === "string"
+        ? data
+        : data?.error || data?.message || `Request failed (${res.status})`;
+
     throw new Error(message);
   }
 

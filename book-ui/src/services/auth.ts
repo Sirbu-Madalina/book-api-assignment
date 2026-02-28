@@ -6,8 +6,8 @@ export async function login(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   });
 
-  // your API returns { error:null, data:{ userId, token } }
-  const token = data?.data?.token;
+  // token could be returned in different shapes
+  const token = data?.data?.token ?? data?.token;
   if (token) localStorage.setItem("token", token);
 
   return data;

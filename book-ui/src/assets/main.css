@@ -1,8 +1,8 @@
 html,
 body {
-  height: 100%;
+  height: auto;
   margin: 0;
-  overflow: hidden; /* <-- kills scrolling for the whole page */
+  overflow-y: auto;
 }
 
 #app {

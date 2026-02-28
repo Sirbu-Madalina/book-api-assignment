@@ -3,9 +3,18 @@ import * as bookService from "../services/bookService";
 
 type IdParams = { id: string };
 
+function isNonEmptyString(v: unknown) {
+  return typeof v === "string" && v.trim().length > 0;
+}
+
 // Create book
 export async function createBook(req: Request, res: Response): Promise<void> {
   try {
+    if (!isNonEmptyString(req.body?.image)) {
+      res.status(400).send("Image URL is required");
+      return;
+    }
+
     const result = await bookService.createBookService(req.body);
     res.status(201).send(result);
   } catch (error: any) {
@@ -50,6 +59,12 @@ export async function updateBookById(req: Request<IdParams>, res: Response): Pro
   const { id } = req.params;
 
   try {
+    // if image is provided, it must not be empty
+    if ("image" in req.body && !isNonEmptyString(req.body?.image)) {
+      res.status(400).send("Image URL cannot be empty");
+      return;
+    }
+
     const result = await bookService.updateBookByIdService(id, req.body);
 
     if (!result) {
@@ -57,7 +72,6 @@ export async function updateBookById(req: Request<IdParams>, res: Response): Pro
       return;
     }
 
-    // returns updated book doc
     res.status(200).send(result);
   } catch (error: any) {
     if (error?.name === "ValidationError") {

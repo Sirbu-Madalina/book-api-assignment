@@ -4,8 +4,8 @@ import { Book } from '../interfaces/book';
 const bookSchema = new Schema<Book>({
   title: {type: String, required: true},
   author: {type: String, required: true},
-  image: { type: String, required: false },
-  description: {type: String, required: true},
+  image: { type: String, required: true },
+  description: {type: String, required: false},
   publishedYear: {type: Number, required: true},
   genre: {type: String, required: true},
   price: {type: Number, required: true},

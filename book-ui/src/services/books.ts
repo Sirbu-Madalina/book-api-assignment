@@ -4,8 +4,8 @@ export type Book = {
   _id?: string;
   title: string;
   author: string;
-  image?: string;
-  description: string;
+  image: string;
+  description?: string;
   publishedYear: number;
   genre: string;
   price: number;

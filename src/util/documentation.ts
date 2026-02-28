@@ -1,52 +1,60 @@
-import swaggerUi from 'swagger-ui-express';
-import swaggerJSDoc from 'swagger-jsdoc';
-import { Application } from 'express';
+import swaggerUi from "swagger-ui-express";
+import swaggerJSDoc from "swagger-jsdoc";
+import { Application } from "express";
 
 // Setup Swagger
 export function setupDocs(app: Application) {
-
   // Swagger definition
   const swaggerDefinition = {
-    openapi: '3.0.0',
+    openapi: "3.0.0",
     info: {
-      title: 'book-api-assignment',
-      version: '1.0.0',
-      description: 'Book library API',
+      title: "book-api-assignment",
+      version: "1.0.0",
+      description: "Book library API",
     },
     servers: [
       {
-        url: 'http://localhost:4000/api/',
-        description: 'Local development server',
+        url: "http://localhost:4000/api/",
+        description: "Local development server",
       },
     ],
     components: {
       securitySchemes: {
         ApiKeyAuth: {
-          type: 'apiKey',
-          in: 'header',
-          name: 'auth-token',
+          type: "apiKey",
+          in: "header",
+          name: "auth-token",
         },
       },
       schemas: {
         Book: {
-          type: 'object',
+          type: "object",
+          required: [
+            "title",
+            "author",
+            "image",
+            "publishedYear",
+            "genre",
+            "price",
+            "inStock",
+          ],
           properties: {
-            title: { type: 'string' },
-            author: { type: 'string' },
-            image: { type: 'string' },
-            description: { type: 'string' },
-            publishedYear: { type: 'number' },
-            genre: { type: 'string' },
-            price: { type: 'number' },
-            inStock: { type: 'boolean' },
+            title: { type: "string" },
+            author: { type: "string" },
+            image: { type: "string" },
+            description: { type: "string" },
+            publishedYear: { type: "number" },
+            genre: { type: "string" },
+            price: { type: "number" },
+            inStock: { type: "boolean" },
           },
         },
         User: {
-          type: 'object',
+          type: "object",
           properties: {
-            name: { type: 'string' },
-            email: { type: 'string' },
-            password: { type: 'string' },
+            name: { type: "string" },
+            email: { type: "string" },
+            password: { type: "string" },
           },
         },
       },
@@ -56,12 +64,12 @@ export function setupDocs(app: Application) {
   // Swagger options
   const options = {
     definition: swaggerDefinition,
-    apis: ['./src/**/*.ts'],
+    apis: ["./src/**/*.ts"],
   };
 
   // Swagger specification
   const swaggerSpec = swaggerJSDoc(options);
 
   // Create docs route
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }

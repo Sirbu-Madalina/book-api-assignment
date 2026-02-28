@@ -13,7 +13,7 @@ const app: Application = express();
 function setupCors(){
   app.use(cors({
     //Allow request from any origin
-    origin:"*",
+    origin: "http://localhost:5173",
 
     //Allow methods 
     methods:'GET, PUT, POST, DELETE',

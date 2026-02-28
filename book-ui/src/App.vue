@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { isLoggedIn, logout } from "./services/auth";
 import { computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { isLoggedIn, logout } from "./services/auth";
+import { PhSignOut } from "@phosphor-icons/vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -17,16 +18,16 @@ function onLogout() {
 
 <template>
   <header v-if="!isAuthLayout" class="top">
-    <h1>Book UI</h1>
+    <div class="top__inner">
+      <h1 class="brand">Book UI</h1>
 
-    <nav class="nav">
-      <RouterLink to="/">Books</RouterLink>
-      <RouterLink to="/login" v-if="!loggedIn">Login</RouterLink>
-      <button v-else class="btn" @click="onLogout">Logout</button>
-    </nav>
+      <button v-if="loggedIn" class="signout" type="button" @click="onLogout">
+        <PhSignOut :size="18" />
+        <span>Sign out</span>
+      </button>
+    </div>
   </header>
 
-  <!-- If login page: render full-screen without container -->
   <main v-if="!isAuthLayout" class="container">
     <RouterView />
   </main>
@@ -35,19 +36,28 @@ function onLogout() {
 </template>
 
 <style scoped>
+/* Header background full width */
 .top {
   position: sticky;
   top: 0;
   z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 28px;
   background: #f7f3ee;
   border-bottom: 1px solid rgba(31, 36, 48, 0.12);
 }
 
-.top h1 {
+/* THIS is what aligns with the page container */
+.top__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 28px;
+
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
   margin: 0;
   font-size: 22px;
   font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
@@ -55,19 +65,19 @@ function onLogout() {
   color: #1f2430;
 }
 
-.nav {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-}
-
+/* Page container */
 .container {
   max-width: 1100px;
   margin: 0 auto;
   padding: 28px;
 }
 
-.btn {
+/* Sign out button */
+.signout {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
   padding: 10px 14px;
   border: 1px solid rgba(31, 36, 48, 0.18);
   background: transparent;
@@ -75,7 +85,8 @@ function onLogout() {
   border-radius: 12px;
   cursor: pointer;
 }
-.btn:hover {
+
+.signout:hover {
   background: rgba(31, 36, 48, 0.04);
 }
 </style>
