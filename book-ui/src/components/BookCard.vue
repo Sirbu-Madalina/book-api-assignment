@@ -1,36 +1,49 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { PhHeartStraight, PhShoppingCartSimple } from "@phosphor-icons/vue";
+import { PhHeartStraight } from "@phosphor-icons/vue";
 import type { Book } from "../services/books";
 
 const props = defineProps<{
   book: Book;
-  saved?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: "add-to-cart", book: Book): void;
-  (e: "toggle-save", book: Book): void;
+  (e: "toggle-favorite", book: Book): void;
 }>();
 
-const stockLabel = computed(() =>
-  (props.book.stockQuantity || 0) > 0 ? "In stock" : "Out of stock"
-);
+const progressPercent = computed(() => {
+  if (!props.book.totalPages || props.book.totalPages <= 0) return 0;
+  const current = props.book.currentPage ?? 0;
+  return Math.min(100, Math.round((current / props.book.totalPages) * 100));
+});
+
+const statusLabel = computed(() => {
+  switch (props.book.status) {
+    case "want-to-read":
+      return "Want to Read";
+    case "currently-reading":
+      return "Currently Reading";
+    case "finished":
+      return "Finished";
+    default:
+      return props.book.status;
+  }
+});
 </script>
 
 <template>
   <article class="book-card">
     <div class="book-cover-wrap">
-      <img :src="book.image" :alt="book.title" class="book-cover" />
+      <img :src="book.coverImage" :alt="book.title" class="book-cover" />
 
       <button
         class="save-btn"
-        :class="{ active: saved }"
+        :class="{ active: book.isFavorite }"
         type="button"
-        @click="$emit('toggle-save', book)"
-        aria-label="Save book"
+        @click="$emit('toggle-favorite', book)"
+        aria-label="Toggle favorite"
       >
-        <PhHeartStraight :size="18" :weight="saved ? 'fill' : 'regular'" />
+        <PhHeartStraight :size="18" :weight="book.isFavorite ? 'fill' : 'regular'" />
       </button>
     </div>
 
@@ -39,27 +52,18 @@ const stockLabel = computed(() =>
       <h3 class="book-title">{{ book.title }}</h3>
       <p class="book-author">{{ book.author }}</p>
 
-      <div class="book-meta">
-        <span class="price">${{ Number(book.price).toFixed(2) }}</span>
-        <span
-          class="stock-badge"
-          :class="(book.stockQuantity || 0) > 0 ? 'ok' : 'empty'"
-        >
-          {{ stockLabel }}
-        </span>
+      <div class="status-row">
+        <span class="status-badge">{{ statusLabel }}</span>
+        <span class="progress-text">{{ book.currentPage }} / {{ book.totalPages }} pages</span>
       </div>
 
-      <div class="book-actions">
-        <button
-          class="btn btn-primary"
-          type="button"
-          :disabled="(book.stockQuantity || 0) <= 0"
-          @click="$emit('add-to-cart', book)"
-        >
-          <PhShoppingCartSimple :size="18" />
-          Add to cart
-        </button>
+      <div class="progress">
+        <div class="progress__bar" :style="{ width: `${progressPercent}%` }"></div>
       </div>
+
+      <p v-if="book.targetDate" class="target-date">
+        Target: {{ new Date(book.targetDate).toLocaleDateString() }}
+      </p>
     </div>
   </article>
 </template>
@@ -107,11 +111,6 @@ const stockLabel = computed(() =>
   cursor: pointer;
   color: #344054;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.1);
-  transition: 0.2s ease;
-}
-
-.save-btn:hover {
-  transform: scale(1.05);
 }
 
 .save-btn.active {
@@ -146,67 +145,43 @@ const stockLabel = computed(() =>
   font-size: 0.95rem;
 }
 
-.book-meta {
+.status-row {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  align-items: center;
 }
 
-.price {
-  font-size: 1rem;
-  font-weight: 800;
-  color: #1f2430;
-}
-
-.stock-badge {
+.status-badge {
   padding: 0.32rem 0.6rem;
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;
+  background: #f2f4f7;
+  color: #344054;
 }
 
-.stock-badge.ok {
-  background: #ecfdf3;
-  color: #027a48;
+.progress-text {
+  font-size: 0.82rem;
+  color: #667085;
 }
 
-.stock-badge.empty {
-  background: #fef3f2;
-  color: #b42318;
-}
-
-.book-actions {
-  margin-top: 6px;
-}
-
-.btn {
-  height: 44px;
+.progress {
   width: 100%;
-  border-radius: 14px;
-  border: 1px solid rgba(31, 36, 48, 0.1);
-  font-weight: 800;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: 0.2s ease;
+  height: 8px;
+  border-radius: 999px;
+  background: #eaecf0;
+  overflow: hidden;
 }
 
-.btn-primary {
+.progress__bar {
+  height: 100%;
   background: #e5971a;
-  color: white;
-  border-color: transparent;
 }
 
-.btn-primary:hover {
-  background: #d8890d;
-}
-
-.btn-primary:disabled {
-  background: #e5e7eb;
-  color: #98a2b3;
-  cursor: not-allowed;
+.target-date {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #667085;
 }
 </style>

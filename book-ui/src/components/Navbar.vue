@@ -2,46 +2,53 @@
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { isLoggedIn, logout } from "../services/auth";
-import {
-  PhSignOut,
-  PhGear,
-  PhHeartStraight,
-  PhShoppingCartSimple,
-} from "@phosphor-icons/vue";
-import { useCart } from "../composables/useCart";
-import { useSavedBooks } from "../composables/useSavedBooks";
+import { PhSignOut, PhGear, PhHeartStraight, PhBooks } from "@phosphor-icons/vue";
+import { getBooks } from "../services/books";
+import { onMounted, ref } from "vue";
+import type { Book } from "../services/books";
 
 const router = useRouter();
 const loggedIn = computed(() => isLoggedIn());
+const books = ref<Book[]>([]);
 
-const { cartBooks } = useCart();
-const { savedBooks } = useSavedBooks();
+const favoriteCount = computed(() => books.value.filter((b) => b.isFavorite).length);
+
+async function loadBooks() {
+  if (!loggedIn.value) return;
+
+  try {
+    books.value = await getBooks();
+  } catch {
+    books.value = [];
+  }
+}
 
 function onLogout() {
   logout();
   router.push("/login");
 }
+
+onMounted(loadBooks);
 </script>
 
 <template>
   <header class="top">
     <div class="top__inner">
       <RouterLink to="/" class="brand-link">
-        <h1 class="brand">Book UI</h1>
+        <h1 class="brand">Book Tracker</h1>
       </RouterLink>
 
       <div class="actions" v-if="loggedIn">
+        <RouterLink to="/" class="btn-icon" title="My Books">
+          <PhBooks :size="20" weight="regular" />
+        </RouterLink>
+
         <RouterLink to="/favorites" class="btn-icon badge-wrap" title="Favorites">
           <PhHeartStraight :size="20" weight="regular" />
-          <span v-if="savedBooks.length" class="badge">{{ savedBooks.length }}</span>
+          <span v-if="favoriteCount" class="badge">{{ favoriteCount }}</span>
         </RouterLink>
 
-        <RouterLink to="/cart" class="btn-icon badge-wrap" title="Cart">
-          <PhShoppingCartSimple :size="20" weight="regular" />
-          <span v-if="cartBooks.length" class="badge">{{ cartBooks.length }}</span>
-        </RouterLink>
-
-        <RouterLink to="/admin" class="btn-icon" title="Admin Dashboard">
+        <RouterLink to="/admin" class="btn-icon" title="Dashboard">
           <PhGear :size="20" weight="regular" />
         </RouterLink>
 
