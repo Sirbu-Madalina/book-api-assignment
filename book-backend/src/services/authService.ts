@@ -75,7 +75,7 @@ export async function loginUserService(input: LoginInput) {
       { expiresIn: "2h" }
     );
 
-    return { userId, token };
+    return { userId, token, yearlyReadingGoal: user.yearlyReadingGoal };
   } finally {
     await disconnect();
   }

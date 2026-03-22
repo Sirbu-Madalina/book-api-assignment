@@ -1,13 +1,19 @@
-import { Document } from 'mongoose';
+import { Document, Types } from "mongoose";
+
+export type ReadingStatus = "want-to-read" | "currently-reading" | "finished";
 
 export interface Book extends Document {
   title: string;
   author: string;
-  image: string; 
+  coverImage: string;
   description?: string;
-  publishedYear: number;
   genre: string;
-  price: number;
-  inStock: boolean;
-  stockQuantity: number;
+  totalPages: number;
+  currentPage: number;
+  status: ReadingStatus;
+  startedAt?: Date;
+  finishedAt?: Date;
+  targetDate?: Date;
+  isFavorite: boolean;
+  userId: Types.ObjectId;
 }

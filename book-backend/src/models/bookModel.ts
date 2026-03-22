@@ -1,16 +1,37 @@
-import { Schema, model } from 'mongoose';
-import { Book } from '../interfaces/book';
+import { Schema, model } from "mongoose";
+import { Book } from "../interfaces/book";
 
-const bookSchema = new Schema<Book>({
-  title: {type: String, required: true},
-  author: {type: String, required: true},
-  image: { type: String, required: true },
-  description: {type: String, required: false},
-  publishedYear: {type: Number, required: true},
-  genre: {type: String, required: true},
-  price: {type: Number, required: true},
-  inStock: {type: Boolean, required: true, default: true},
-  stockQuantity: { type: Number, default: 0 }
-});
+const bookSchema = new Schema<Book>(
+  {
+    title: { type: String, required: true, trim: true },
+    author: { type: String, required: true, trim: true },
+    coverImage: { type: String, required: true, trim: true },
+    description: { type: String, default: "" },
+    genre: { type: String, required: true, trim: true },
 
-export const bookModel = model<Book>('Book', bookSchema);
+    totalPages: { type: Number, required: true, min: 1 },
+    currentPage: { type: Number, default: 0, min: 0 },
+
+    status: {
+      type: String,
+      required: true,
+      enum: ["want-to-read", "currently-reading", "finished"],
+      default: "want-to-read",
+    },
+
+    startedAt: { type: Date },
+    finishedAt: { type: Date },
+    targetDate: { type: Date },
+
+    isFavorite: { type: Boolean, default: false },
+
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
+export const bookModel = model<Book>("Book", bookSchema);

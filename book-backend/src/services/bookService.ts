@@ -1,56 +1,75 @@
 import { bookModel } from "../models/bookModel";
 import { connect, disconnect } from "../repository/database";
 
-// Persists a new book document and returns the saved record
-export async function createBookService(data: any) {
+export type CreateBookInput = {
+  title: string;
+  author: string;
+  coverImage: string;
+  description?: string;
+  genre: string;
+  totalPages: number;
+  currentPage?: number;
+  status?: "want-to-read" | "currently-reading" | "finished";
+  startedAt?: Date;
+  finishedAt?: Date;
+  targetDate?: Date;
+  isFavorite?: boolean;
+};
+
+export async function createBookService(data: CreateBookInput, userId: string) {
   try {
     await connect();
-    const book = new bookModel(data);
+
+    const book = new bookModel({
+      ...data,
+      userId,
+    });
+
     return await book.save();
   } finally {
     await disconnect();
   }
 }
 
-// Returns all books in the collection
-export async function getAllBooksService() {
+export async function getAllBooksService(userId: string) {
   try {
     await connect();
-    return await bookModel.find({});
+    return await bookModel.find({ userId }).sort({ createdAt: -1 });
   } finally {
     await disconnect();
   }
 }
 
-// Finds a single book by id
-export async function getBookByIdService(id: string) {
+export async function getBookByIdService(id: string, userId: string) {
   try {
     await connect();
-    return await bookModel.findById(id);
+    return await bookModel.findOne({ _id: id, userId });
   } finally {
     await disconnect();
   }
 }
 
-// Updates book by id and returns the updated document
-export async function updateBookByIdService(id: string, data: any) {
+export async function updateBookByIdService(id: string, data: Partial<CreateBookInput>, userId: string) {
   try {
     await connect();
 
-    return await bookModel.findByIdAndUpdate(id, data, {
-      new: true,
-      runValidators: true,
-    });
+    return await bookModel.findOneAndUpdate(
+      { _id: id, userId },
+      data,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
   } finally {
     await disconnect();
   }
 }
 
-// Deletes a book by id
-export async function deleteBookByIdService(id: string) {
+export async function deleteBookByIdService(id: string, userId: string) {
   try {
     await connect();
-    return await bookModel.findByIdAndDelete(id);
+    return await bookModel.findOneAndDelete({ _id: id, userId });
   } finally {
     await disconnect();
   }
