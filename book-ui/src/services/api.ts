@@ -19,14 +19,22 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     headers,
   });
 
-  // try json, if not possible -> fallback to text
+  if (res.status === 204) {
+    return null;
+  }
+
   const contentType = res.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");
 
-  const data = isJson ? await res.json().catch(() => null) : await res.text();
+  let data: any = null;
+
+  try {
+    data = isJson ? await res.json() : await res.text();
+  } catch {
+    data = null;
+  }
 
   if (!res.ok) {
-    // support both JSON errors and text errors
     const message =
       typeof data === "string"
         ? data

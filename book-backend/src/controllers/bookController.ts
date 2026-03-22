@@ -32,7 +32,7 @@ export async function getAllBooks(req: Request, res: Response): Promise<void> {
     const result = await bookService.getAllBooksService();
     res.status(200).send(result);
   } catch {
-    res.status(500).send("Error in retriving books");
+    res.status(500).send("Error in retrieving books");
   }
 }
 
@@ -50,7 +50,7 @@ export async function getBookById(req: Request<IdParams>, res: Response): Promis
 
     res.status(200).send(result);
   } catch {
-    res.status(500).send("Error in retriving book by id");
+    res.status(500).send("Error in retrieving book by id");
   }
 }
 
@@ -59,7 +59,6 @@ export async function updateBookById(req: Request<IdParams>, res: Response): Pro
   const { id } = req.params;
 
   try {
-    // if image is provided, it must not be empty
     if ("image" in req.body && !isNonEmptyString(req.body?.image)) {
       res.status(400).send("Image URL cannot be empty");
       return;

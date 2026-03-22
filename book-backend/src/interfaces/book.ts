@@ -9,4 +9,5 @@ export interface Book extends Document {
   genre: string;
   price: number;
   inStock: boolean;
+  stockQuantity: number;
 }

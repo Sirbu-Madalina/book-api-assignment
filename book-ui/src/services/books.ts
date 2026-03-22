@@ -9,6 +9,7 @@ export type Book = {
   publishedYear: number;
   genre: string;
   price: number;
+  stockQuantity: number;
   inStock: boolean;
 };
 
@@ -31,5 +32,7 @@ export function updateBook(id: string, book: Partial<Book>) {
 }
 
 export function deleteBook(id: string) {
-  return apiFetch(`/books/${id}`, { method: "DELETE" });
+  return apiFetch(`/books/${id}`, {
+    method: "DELETE",
+  });
 }

@@ -1,162 +1,212 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { PhHeartStraight, PhShoppingCartSimple } from "@phosphor-icons/vue";
 import type { Book } from "../services/books";
-import { PhPencilSimple, PhTrash } from "@phosphor-icons/vue";
 
 const props = defineProps<{
   book: Book;
-  coverFallback: string;
-  canManage: boolean;
+  saved?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: "delete", id?: string): void;
-  (e: "edit", book: Book): void;
+  (e: "add-to-cart", book: Book): void;
+  (e: "toggle-save", book: Book): void;
 }>();
 
-function onImgError(e: Event) {
-  const img = e.target as HTMLImageElement;
-  img.src = props.coverFallback;
-}
+const stockLabel = computed(() =>
+  (props.book.stockQuantity || 0) > 0 ? "In stock" : "Out of stock"
+);
 </script>
 
 <template>
-  <article class="bookCard">
-    <div class="bookCard__coverWrap">
-      <img
-        class="bookCard__cover"
-        :src="book.image || coverFallback"
-        :alt="book.title || 'Book cover'"
-        loading="lazy"
-        @error="onImgError"
-      />
+  <article class="book-card">
+    <div class="book-cover-wrap">
+      <img :src="book.image" :alt="book.title" class="book-cover" />
+
+      <button
+        class="save-btn"
+        :class="{ active: saved }"
+        type="button"
+        @click="$emit('toggle-save', book)"
+        aria-label="Save book"
+      >
+        <PhHeartStraight :size="18" :weight="saved ? 'fill' : 'regular'" />
+      </button>
     </div>
 
-    <div class="bookCard__body">
-      <h3 class="bookCard__title">{{ book.title }}</h3>
-      <p class="bookCard__author">{{ book.author }}</p>
+    <div class="book-content">
+      <p class="book-genre">{{ book.genre }}</p>
+      <h3 class="book-title">{{ book.title }}</h3>
+      <p class="book-author">{{ book.author }}</p>
 
-      <div class="bookCard__footer">
-        <span v-if="book.genre" class="pill">{{ book.genre }}</span>
+      <div class="book-meta">
+        <span class="price">${{ Number(book.price).toFixed(2) }}</span>
+        <span
+          class="stock-badge"
+          :class="(book.stockQuantity || 0) > 0 ? 'ok' : 'empty'"
+        >
+          {{ stockLabel }}
+        </span>
+      </div>
 
-        <div class="bookCard__actions" v-if="canManage">
-          <button
-  class="iconBtn"
-  type="button"
-  title="Edit"
-  aria-label="Edit"
-  @click="emit('edit', book)"
->
-  <PhPencilSimple :size="18" weight="regular" />
-</button>
-
-<button
-  class="iconBtn iconBtn--danger"
-  type="button"
-  title="Delete"
-  aria-label="Delete"
-  @click="emit('delete', book._id)"
->
-  <PhTrash :size="18" weight="regular" />
-</button>
-        </div>
+      <div class="book-actions">
+        <button
+          class="btn btn-primary"
+          type="button"
+          :disabled="(book.stockQuantity || 0) <= 0"
+          @click="$emit('add-to-cart', book)"
+        >
+          <PhShoppingCartSimple :size="18" />
+          Add to cart
+        </button>
       </div>
     </div>
   </article>
 </template>
 
 <style scoped>
-.bookCard {
-  border-radius: 18px;
-  border: 1px solid rgba(31, 36, 48, 0.12);
-  background: rgba(255, 255, 255, 0.7);
+.book-card {
+  display: grid;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid rgba(31, 36, 48, 0.08);
+  border-radius: 20px;
   overflow: hidden;
-  display: grid;
+  transition: 0.2s ease;
 }
 
-.bookCard__coverWrap {
-  background: rgba(31, 36, 48, 0.03);
-  padding: 12px 12px 0;
+.book-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
 }
 
-.bookCard__cover {
+.book-cover-wrap {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  background: #f4f1eb;
+}
+
+.book-cover {
   width: 100%;
-  display: block;
-  border-radius: 14px;
-  aspect-ratio: 3 / 4; /* like a real book cover */
+  height: 100%;
   object-fit: cover;
-  border: 1px solid rgba(31, 36, 48, 0.10);
+  display: block;
 }
 
-.bookCard__body {
-  padding: 12px 14px 14px;
+.save-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 42px;
+  width: 42px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
   display: grid;
-  gap: 6px;
+  place-items: center;
+  cursor: pointer;
+  color: #344054;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.1);
+  transition: 0.2s ease;
 }
 
-.bookCard__title {
+.save-btn:hover {
+  transform: scale(1.05);
+}
+
+.save-btn.active {
+  color: #c1121f;
+}
+
+.book-content {
+  display: grid;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.book-genre {
   margin: 0;
-  font-size: 16px;
-  font-weight: 900;
-  line-height: 1.2;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #8a6f45;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.bookCard__author {
+.book-title {
   margin: 0;
-  font-size: 13px;
-  color: rgba(31, 36, 48, 0.62);
+  font-size: 1.15rem;
+  line-height: 1.3;
+  color: #1f2430;
 }
 
-.bookCard__footer {
-  margin-top: 6px;
+.book-author {
+  margin: 0;
+  color: #667085;
+  font-size: 0.95rem;
+}
+
+.book-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
-.pill {
-  padding: 6px 10px;
+.price {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1f2430;
+}
+
+.stock-badge {
+  padding: 0.32rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid rgba(31, 36, 48, 0.12);
-  background: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-  color: rgba(31, 36, 48, 0.82);
-  max-width: 60%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
-.bookCard__actions {
-  display: flex;
-  gap: 10px;
+.stock-badge.ok {
+  background: #ecfdf3;
+  color: #027a48;
 }
 
-.iconBtn {
-  height: 36px;
-  width: 36px;
-  border-radius: 999px;
-  border: 1px solid rgba(31, 36, 48, 0.12);
-  background: rgba(255, 255, 255, 0.65);
+.stock-badge.empty {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.book-actions {
+  margin-top: 6px;
+}
+
+.btn {
+  height: 44px;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(31, 36, 48, 0.1);
+  font-weight: 800;
   cursor: pointer;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
-  padding: 0;
+  gap: 8px;
+  transition: 0.2s ease;
 }
 
-.iconBtn:hover {
-  background: rgba(31, 36, 48, 0.04);
-  border-color: rgba(229, 151, 26, 0.5);
+.btn-primary {
+  background: #e5971a;
+  color: white;
+  border-color: transparent;
 }
 
-.iconBtn--danger {
-  border-color: rgba(180, 35, 24, 0.25);
-  color: #b42318;
+.btn-primary:hover {
+  background: #d8890d;
 }
-.iconBtn--danger:hover {
-  background: rgba(180, 35, 24, 0.08);
+
+.btn-primary:disabled {
+  background: #e5e7eb;
+  color: #98a2b3;
+  cursor: not-allowed;
 }
 </style>

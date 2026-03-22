@@ -8,7 +8,6 @@ export async function createBookService(data: any) {
     const book = new bookModel(data);
     return await book.save();
   } finally {
-
     await disconnect();
   }
 }
@@ -23,7 +22,7 @@ export async function getAllBooksService() {
   }
 }
 
-// Finds a single book id
+// Finds a single book by id
 export async function getBookByIdService(id: string) {
   try {
     await connect();
@@ -33,11 +32,15 @@ export async function getBookByIdService(id: string) {
   }
 }
 
-// Updates book by id and returns the updated document 
+// Updates book by id and returns the updated document
 export async function updateBookByIdService(id: string, data: any) {
   try {
     await connect();
-    return await bookModel.findByIdAndUpdate(id, data, { new: true });
+
+    return await bookModel.findByIdAndUpdate(id, data, {
+      new: true,
+      runValidators: true,
+    });
   } finally {
     await disconnect();
   }
