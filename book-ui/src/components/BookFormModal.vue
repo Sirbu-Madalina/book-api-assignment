@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import type { CreateBookInput, ReadingStatus } from "../services/books";
 
 const open = defineModel<boolean>("open", { default: false });
@@ -33,10 +32,6 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
   { value: "currently-reading", label: "Currently Reading" },
   { value: "finished", label: "Finished" },
 ];
-
-const coverPreview = computed(() => {
-  return model.value.coverImage?.trim() || "";
-});
 </script>
 
 <template>
@@ -44,124 +39,76 @@ const coverPreview = computed(() => {
     <div class="modal">
       <div class="modal__header">
         <div>
-          <h2 class="modal__title">Add Book</h2>
-          <p class="modal__subtitle">
-            Add a new book to your reading tracker and keep your progress organized.
-          </p>
+          <h2 class="modal__title">Add a New Book</h2>
         </div>
 
-        <button class="close-btn" type="button" @click="$emit('close')" aria-label="Close modal">
+        <button
+          class="close-btn"
+          type="button"
+          @click="$emit('close')"
+          aria-label="Close modal"
+        >
           ✕
         </button>
       </div>
 
       <div class="modal__body">
-        <section class="section">
-          <div class="section__label">Book details</div>
+        <div class="form-grid">
+          <label class="field field--full">
+            <span class="field__label">Title</span>
+            <input
+              v-model="model.title"
+              type="text"
+              placeholder="Enter book title"
+            />
+          </label>
 
-          <div class="form-grid">
-            <label class="field field--full">
-              <span class="field__label">Title</span>
-              <input
-                v-model="model.title"
-                type="text"
-                placeholder="e.g. Atomic Habits"
-              />
-            </label>
+          <label class="field field--full">
+            <span class="field__label">Author</span>
+            <input
+              v-model="model.author"
+              type="text"
+              placeholder="Enter author name"
+            />
+          </label>
 
-            <label class="field field--full">
-              <span class="field__label">Author</span>
-              <input
-                v-model="model.author"
-                type="text"
-                placeholder="e.g. James Clear"
-              />
-            </label>
+          <label class="field field--full">
+            <span class="field__label">Cover image URL</span>
+            <input
+              v-model="model.coverImage"
+              type="text"
+              placeholder="Paste image URL..."
+            />
+          </label>
 
-            <label class="field field--full">
-              <span class="field__label">Cover image URL</span>
-              <input
-                v-model="model.coverImage"
-                type="text"
-                placeholder="Paste an image URL..."
-              />
-            </label>
+          <label class="field">
+            <span class="field__label">Total Pages</span>
+            <input
+              v-model.number="model.totalPages"
+              type="number"
+              min="1"
+              placeholder="e.g. 350"
+            />
+          </label>
 
-            <div v-if="coverPreview" class="cover-preview field--full">
-              <img :src="coverPreview" alt="Book cover preview" class="cover-preview__img" />
-              <div class="cover-preview__text">
-                <span class="cover-preview__title">Cover preview</span>
-                <span class="cover-preview__hint">This is how the book cover will appear.</span>
-              </div>
-            </div>
+          <label class="field">
+            <span class="field__label">Status</span>
+            <select v-model="model.status">
+              <option
+                v-for="option in statusOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
 
-            <label class="field">
-              <span class="field__label">Genre</span>
-              <input
-                v-model="model.genre"
-                type="text"
-                placeholder="e.g. Self-help"
-              />
-            </label>
-
-            <label class="field">
-              <span class="field__label">Status</span>
-              <select v-model="model.status">
-                <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
-
-            <label class="field field--full">
-              <span class="field__label">Description</span>
-              <textarea
-                v-model="model.description"
-                rows="4"
-                placeholder="Write a short description or note about the book..."
-              />
-            </label>
-          </div>
-        </section>
-
-        <section class="section">
-          <div class="section__label">Reading progress</div>
-
-          <div class="form-grid">
-            <label class="field">
-              <span class="field__label">Total pages</span>
-              <input
-                v-model.number="model.totalPages"
-                type="number"
-                min="1"
-                placeholder="320"
-              />
-            </label>
-
-            <label class="field">
-              <span class="field__label">Current page</span>
-              <input
-                v-model.number="model.currentPage"
-                type="number"
-                min="0"
-                placeholder="0"
-              />
-            </label>
-
-            <label class="field">
-              <span class="field__label">Target date</span>
-              <input v-model="model.targetDate" type="date" />
-            </label>
-
-            <label class="field field--checkbox">
-              <input v-model="model.isFavorite" type="checkbox" />
-              <div>
-                <span class="field__label field__label--checkbox">Mark as favorite</span>
-                <p class="field__hint">Show this book in your favorites list.</p>
-              </div>
-            </label>
-          </div>
-        </section>
+          <label class="field field--checkbox">
+            <input v-model="model.isFavorite" type="checkbox" />
+            <span class="field__label">Mark as favorite</span>
+          </label>
+        </div>
 
         <p v-if="props.error" class="error" role="alert">
           {{ props.error }}
@@ -179,7 +126,7 @@ const coverPreview = computed(() => {
           :disabled="props.loading"
           @click="$emit('submit')"
         >
-          {{ props.loading ? "Saving..." : "Save Book" }}
+          {{ props.loading ? "Saving..." : "Add Book" }}
         </button>
       </div>
     </div>
@@ -194,19 +141,16 @@ const coverPreview = computed(() => {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(4px);
 }
 
 .modal {
-  width: min(760px, 100%);
-  max-height: min(88vh, 920px);
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  width: min(560px, 100%);
   background: #fcfaf7;
-  border: 1px solid rgba(31, 36, 48, 0.08);
-  border-radius: 28px;
-  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.22);
+  border: 1px solid rgba(31, 36, 48, 0.12);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
   overflow: hidden;
 }
 
@@ -215,26 +159,17 @@ const coverPreview = computed(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 28px 28px 18px;
+  padding: 22px 22px 16px;
   border-bottom: 1px solid rgba(31, 36, 48, 0.08);
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(252, 250, 247, 0.9));
 }
 
 .modal__title {
   margin: 0;
   font-size: 2rem;
-  line-height: 1.1;
+  line-height: 1.08;
   color: #1f2430;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-family: ui-serif, Georgia, Cambria, serif;
   letter-spacing: -0.03em;
-}
-
-.modal__subtitle {
-  margin: 8px 0 0;
-  max-width: 520px;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: #667085;
 }
 
 .close-btn {
@@ -254,34 +189,15 @@ const coverPreview = computed(() => {
 
 .close-btn:hover {
   background: #f4efe8;
-  color: #1f2430;
 }
 
 .modal__body {
-  overflow: auto;
-  padding: 22px 28px 10px;
-}
-
-.section {
-  display: grid;
-  gap: 14px;
-}
-
-.section + .section {
-  margin-top: 26px;
-}
-
-.section__label {
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #8a6f45;
+  padding: 20px 22px 10px;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -300,105 +216,46 @@ const coverPreview = computed(() => {
   color: #344054;
 }
 
-.field__label--checkbox {
-  display: block;
-}
-
-.field__hint {
-  margin: 4px 0 0;
-  font-size: 0.85rem;
-  color: #667085;
-}
-
 input,
-textarea,
 select {
   width: 100%;
   min-width: 0;
   border: 1px solid rgba(31, 36, 48, 0.12);
-  border-radius: 16px;
+  border-radius: 14px;
   background: white;
-  padding: 14px 15px;
+  padding: 13px 14px;
   font: inherit;
   color: #1f2430;
   outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
   box-sizing: border-box;
 }
 
-input::placeholder,
-textarea::placeholder {
+input::placeholder {
   color: #98a2b3;
 }
 
 input:focus,
-textarea:focus,
 select:focus {
-  border-color: rgba(229, 151, 26, 0.65);
-  box-shadow: 0 0 0 4px rgba(229, 151, 26, 0.12);
-  background: #fffdfa;
-}
-
-textarea {
-  resize: vertical;
-  min-height: 110px;
+  border-color: rgba(126, 151, 118, 0.65);
+  box-shadow: 0 0 0 4px rgba(126, 151, 118, 0.12);
 }
 
 .field--checkbox {
-  grid-column: 1 / -1;
-  grid-template-columns: 20px 1fr;
-  align-items: start;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid rgba(31, 36, 48, 0.08);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
 }
 
 .field--checkbox input {
   width: 18px;
   height: 18px;
-  margin-top: 2px;
-  accent-color: #e5971a;
-}
-
-.cover-preview {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(31, 36, 48, 0.08);
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.cover-preview__img {
-  width: 64px;
-  height: 88px;
-  border-radius: 12px;
-  object-fit: cover;
-  background: #f2ede6;
-  border: 1px solid rgba(31, 36, 48, 0.08);
-}
-
-.cover-preview__text {
-  display: grid;
-  gap: 4px;
-}
-
-.cover-preview__title {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #344054;
-}
-
-.cover-preview__hint {
-  font-size: 0.84rem;
-  color: #667085;
+  accent-color: #7e9776;
 }
 
 .error {
-  margin: 22px 0 0;
+  margin: 18px 0 0;
   padding: 12px 14px;
   border-radius: 14px;
   background: #fef3f2;
@@ -411,7 +268,7 @@ textarea {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 18px 28px 24px;
+  padding: 18px 22px 22px;
   border-top: 1px solid rgba(31, 36, 48, 0.08);
   background: rgba(252, 250, 247, 0.95);
 }
@@ -437,20 +294,18 @@ textarea {
 }
 
 .btn--primary {
-  background: #e5971a;
+  background: #7e9776;
   color: white;
   border-color: transparent;
-  box-shadow: 0 10px 24px rgba(229, 151, 26, 0.24);
 }
 
 .btn--primary:hover {
-  background: #d88b12;
+  background: #6e8966;
 }
 
 .btn--primary:disabled {
   opacity: 0.7;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 @media (max-width: 700px) {
@@ -460,27 +315,18 @@ textarea {
 
   .modal {
     width: 100%;
-    max-height: 92vh;
-    border-radius: 22px;
+    border-radius: 18px;
   }
 
   .modal__header,
   .modal__body,
   .modal__footer {
-    padding-left: 18px;
-    padding-right: 18px;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .row {
-    grid-template-columns: 1fr;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .modal__title {
-    font-size: 1.65rem;
+    font-size: 1.6rem;
   }
 
   .modal__footer {

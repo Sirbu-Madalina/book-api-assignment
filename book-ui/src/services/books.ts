@@ -8,7 +8,7 @@ export type Book = {
   author: string;
   coverImage: string;
   description?: string;
-  genre: string;
+  genre?: string;
   totalPages: number;
   currentPage: number;
   status: ReadingStatus;
@@ -26,7 +26,7 @@ export type CreateBookInput = {
   author: string;
   coverImage: string;
   description?: string;
-  genre: string;
+  genre?: string;
   totalPages: number;
   currentPage?: number;
   status?: ReadingStatus;

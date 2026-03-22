@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { PhHeartStraight } from "@phosphor-icons/vue";
+import {
+  PhHeartStraight,
+  PhTrash,
+  PhBookOpen,
+  PhCheckCircle,
+  PhArrowCounterClockwise,
+} from "@phosphor-icons/vue";
 import type { Book } from "../services/books";
 
 const props = defineProps<{
@@ -9,6 +15,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "toggle-favorite", book: Book): void;
+  (e: "delete-book", book: Book): void;
+  (e: "start-reading", book: Book): void;
+  (e: "mark-finished", book: Book): void;
+  (e: "start-over", book: Book): void;
 }>();
 
 const progressPercent = computed(() => {
@@ -29,6 +39,59 @@ const statusLabel = computed(() => {
       return props.book.status;
   }
 });
+
+const statusClass = computed(() => {
+  switch (props.book.status) {
+    case "want-to-read":
+      return "status-badge--want";
+    case "currently-reading":
+      return "status-badge--reading";
+    case "finished":
+      return "status-badge--finished";
+    default:
+      return "";
+  }
+});
+
+const actionLabel = computed(() => {
+  switch (props.book.status) {
+    case "want-to-read":
+      return "Start reading →";
+    case "currently-reading":
+      return "Mark finished ✓";
+    case "finished":
+      return "Start over";
+    default:
+      return "";
+  }
+});
+
+const actionClass = computed(() => {
+  switch (props.book.status) {
+    case "want-to-read":
+      return "action-link--want";
+    case "currently-reading":
+      return "action-link--reading";
+    case "finished":
+      return "action-link--finished";
+    default:
+      return "";
+  }
+});
+
+function handleMainAction() {
+  switch (props.book.status) {
+    case "want-to-read":
+      emit("start-reading", props.book);
+      break;
+    case "currently-reading":
+      emit("mark-finished", props.book);
+      break;
+    case "finished":
+      emit("start-over", props.book);
+      break;
+  }
+}
 </script>
 
 <template>
@@ -43,25 +106,63 @@ const statusLabel = computed(() => {
         @click="$emit('toggle-favorite', book)"
         aria-label="Toggle favorite"
       >
-        <PhHeartStraight :size="18" :weight="book.isFavorite ? 'fill' : 'regular'" />
+        <PhHeartStraight
+          :size="16"
+          :weight="book.isFavorite ? 'fill' : 'regular'"
+        />
       </button>
     </div>
 
     <div class="book-content">
-      <p class="book-genre">{{ book.genre }}</p>
-      <h3 class="book-title">{{ book.title }}</h3>
-      <p class="book-author">{{ book.author }}</p>
+      <div class="book-header">
+        <div class="book-heading">
+          <h3 class="book-title">{{ book.title }}</h3>
+          <p class="book-author">{{ book.author }}</p>
+        </div>
 
-      <div class="status-row">
-        <span class="status-badge">{{ statusLabel }}</span>
-        <span class="progress-text">{{ book.currentPage }} / {{ book.totalPages }} pages</span>
+        <button
+          class="icon-btn delete-btn"
+          type="button"
+          @click="$emit('delete-book', book)"
+          aria-label="Delete book"
+        >
+          <PhTrash :size="16" />
+        </button>
       </div>
 
-      <div class="progress">
-        <div class="progress__bar" :style="{ width: `${progressPercent}%` }"></div>
+      <div class="book-meta">
+        <span class="status-badge" :class="statusClass">
+          <PhBookOpen v-if="book.status === 'want-to-read'" :size="13" />
+          <PhBookOpen v-else-if="book.status === 'currently-reading'" :size="13" />
+          <PhCheckCircle v-else :size="13" />
+          {{ statusLabel }}
+        </span>
       </div>
 
-      <p v-if="book.targetDate" class="target-date">
+      <template v-if="book.status !== 'want-to-read'">
+        <div class="progress-row">
+          <span class="progress-text">
+            p.{{ book.currentPage }}/{{ book.totalPages }}
+          </span>
+          <span class="progress-text">{{ progressPercent }}%</span>
+        </div>
+
+        <div class="progress">
+          <div class="progress__bar" :style="{ width: `${progressPercent}%` }"></div>
+        </div>
+      </template>
+
+      <button
+        class="action-link"
+        :class="actionClass"
+        type="button"
+        @click="handleMainAction"
+      >
+        <PhArrowCounterClockwise v-if="book.status === 'finished'" :size="14" />
+        {{ actionLabel }}
+      </button>
+
+      <p v-if="book.targetDate && book.status !== 'finished'" class="target-date">
         Target: {{ new Date(book.targetDate).toLocaleDateString() }}
       </p>
     </div>
@@ -71,38 +172,43 @@ const statusLabel = computed(() => {
 <style scoped>
 .book-card {
   display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
   gap: 14px;
-  background: #fff;
+  align-items: start;
+  padding: 14px;
+  background: var(--surface, #fff);
   border: 1px solid rgba(31, 36, 48, 0.08);
-  border-radius: 20px;
-  overflow: hidden;
-  transition: 0.2s ease;
+  border-radius: 18px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  min-width: 0;
 }
 
 .book-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.08);
 }
 
 .book-cover-wrap {
   position: relative;
-  aspect-ratio: 4 / 5;
-  background: #f4f1eb;
 }
 
 .book-cover {
-  width: 100%;
-  height: 100%;
+  width: 88px;
+  height: 124px;
+  border-radius: 12px;
   object-fit: cover;
   display: block;
+  background: #f4f1eb;
+  border: 1px solid rgba(31, 36, 48, 0.06);
 }
 
 .save-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  height: 42px;
-  width: 42px;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.96);
@@ -110,7 +216,12 @@ const statusLabel = computed(() => {
   place-items: center;
   cursor: pointer;
   color: #344054;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  transition: transform 0.18s ease;
+}
+
+.save-btn:hover {
+  transform: scale(1.05);
 }
 
 .save-btn.active {
@@ -119,69 +230,160 @@ const statusLabel = computed(() => {
 
 .book-content {
   display: grid;
-  gap: 10px;
-  padding: 0 16px 16px;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 2px;
 }
 
-.book-genre {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #8a6f45;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.book-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 10px;
+}
+
+.book-heading {
+  min-width: 0;
 }
 
 .book-title {
   margin: 0;
   font-size: 1.15rem;
-  line-height: 1.3;
-  color: #1f2430;
+  line-height: 1.12;
+  color: var(--text, #1f2430);
+  font-family: ui-serif, Georgia, Cambria, serif;
+  word-break: break-word;
 }
 
 .book-author {
-  margin: 0;
-  color: #667085;
-  font-size: 0.95rem;
+  margin: 4px 0 0;
+  color: var(--text-soft, #667085);
+  font-size: 0.92rem;
 }
 
-.status-row {
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: #8f7d6d;
+  border-radius: 10px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.icon-btn:hover {
+  background: #f2ede6;
+  color: #5c4436;
+}
+
+.book-meta {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
   align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .status-badge {
-  padding: 0.32rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.38rem 0.72rem;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  background: #f2f4f7;
-  color: #344054;
+  white-space: nowrap;
+}
+
+.status-badge--want {
+  background: #f5efe7;
+  color: #5f5143;
+}
+
+.status-badge--reading {
+  background: #e6efe2;
+  color: #56724f;
+}
+
+.status-badge--finished {
+  background: #eceee8;
+  color: #5d6657;
+}
+
+.progress-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
 }
 
 .progress-text {
   font-size: 0.82rem;
-  color: #667085;
+  color: var(--text-soft, #667085);
 }
 
 .progress {
   width: 100%;
-  height: 8px;
+  height: 7px;
   border-radius: 999px;
-  background: #eaecf0;
+  background: #e5e7eb;
   overflow: hidden;
 }
 
 .progress__bar {
   height: 100%;
-  background: #e5971a;
+  background: #7e9776;
+  border-radius: inherit;
+}
+
+.action-link {
+  width: fit-content;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-link--want {
+  color: #6f9165;
+}
+
+.action-link--reading {
+  color: #7e9776;
+}
+
+.action-link--finished {
+  color: #7e9776;
 }
 
 .target-date {
   margin: 0;
   font-size: 0.82rem;
-  color: #667085;
+  color: #d57a3d;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .book-card {
+    grid-template-columns: 78px 1fr;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .book-cover {
+    width: 78px;
+    height: 112px;
+  }
+
+  .book-title {
+    font-size: 1.1rem;
+  }
 }
 </style>

@@ -7,7 +7,7 @@ export interface Book extends Document {
   author: string;
   coverImage: string;
   description?: string;
-  genre: string;
+  genre?: string;
   totalPages: number;
   currentPage: number;
   status: ReadingStatus;

@@ -7,7 +7,7 @@ const bookSchema = new Schema<Book>(
     author: { type: String, required: true, trim: true },
     coverImage: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
-    genre: { type: String, required: true, trim: true },
+    genre: { type: String, trim: true },
 
     totalPages: { type: Number, required: true, min: 1 },
     currentPage: { type: Number, default: 0, min: 0 },
