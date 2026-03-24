@@ -12,6 +12,7 @@ import {
   deleteBook,
 } from "../services/books";
 import { isLoggedIn } from "../services/auth";
+import AddTimeModal from "../components/AddTimeModal.vue";
 
 const books = ref<Book[]>([]);
 const loading = ref(false);
@@ -22,7 +23,16 @@ const formError = ref("");
 const query = ref("");
 const selectedStatus = ref<"all" | ReadingStatus>("all");
 
+const showAddTimeModal = ref(false);
+const addTimeError = ref("");
+const selectedBookForTime = ref<Book | null>(null);
+
+const minutesRead = ref(0);
+const pagesRead = ref(0);
+
 const form = ref<CreateBookInput>(emptyForm());
+const modalMode = ref<"add" | "edit">("add");
+const editingBookId = ref<string | null>(null);
 
 function emptyForm(): CreateBookInput {
   return {
@@ -53,12 +63,38 @@ async function loadBooks() {
 
 function openAddModal() {
   formError.value = "";
+  modalMode.value = "add";
+  editingBookId.value = null;
   form.value = emptyForm();
+  showModal.value = true;
+}
+
+function openEditModal(book: Book) {
+  if (!book._id) return;
+
+  formError.value = "";
+  modalMode.value = "edit";
+  editingBookId.value = book._id;
+
+  form.value = {
+    title: book.title,
+    author: book.author,
+    coverImage: book.coverImage,
+    description: book.description ?? "",
+    totalPages: book.totalPages,
+    currentPage: book.currentPage ?? 0,
+    status: book.status,
+    targetDate: book.targetDate ?? "",
+    isFavorite: book.isFavorite ?? false,
+  };
+
   showModal.value = true;
 }
 
 function closeModal() {
   formError.value = "";
+  editingBookId.value = null;
+  modalMode.value = "add";
   showModal.value = false;
 }
 
@@ -92,7 +128,7 @@ async function saveBook() {
   formError.value = "";
 
   if (!isLoggedIn()) {
-    error.value = "Please sign in to add a book.";
+    error.value = "Please sign in to save a book.";
     return;
   }
 
@@ -101,8 +137,14 @@ async function saveBook() {
   loading.value = true;
 
   try {
-    const created = await createBook(form.value);
-    books.value.unshift(created);
+    if (modalMode.value === "add") {
+      const created = await createBook(form.value);
+      books.value.unshift(created);
+    } else if (modalMode.value === "edit" && editingBookId.value) {
+      const updated = await updateBook(editingBookId.value, form.value);
+      replaceBook(updated);
+    }
+
     closeModal();
   } catch (e: any) {
     error.value = e?.message || "Could not save the book.";
@@ -118,20 +160,6 @@ function replaceBook(updated: Book) {
   }
 }
 
-async function toggleFavorite(book: Book) {
-  if (!book._id) return;
-
-  try {
-    const updated = await updateBook(book._id, {
-      isFavorite: !book.isFavorite,
-    });
-
-    replaceBook(updated);
-  } catch (e: any) {
-    error.value = e?.message || "Could not update favorite status.";
-  }
-}
-
 async function handleDeleteBook(book: Book) {
   if (!book._id) return;
 
@@ -143,51 +171,39 @@ async function handleDeleteBook(book: Book) {
   }
 }
 
-async function handleStartReading(book: Book) {
+async function handleCycleStatus(book: Book) {
   if (!book._id) return;
 
-  try {
-    const updated = await updateBook(book._id, {
-      status: "currently-reading",
+  let nextStatus: ReadingStatus = "want-to-read";
+  let updateData: Partial<CreateBookInput> = {};
+
+  if (book.status === "want-to-read") {
+    nextStatus = "currently-reading";
+    updateData = {
+      status: nextStatus,
       startedAt: new Date().toISOString(),
       currentPage: book.currentPage ?? 0,
-    });
-
-    replaceBook(updated);
-  } catch (e: any) {
-    error.value = e?.message || "Could not start reading.";
-  }
-}
-
-async function handleMarkFinished(book: Book) {
-  if (!book._id) return;
-
-  try {
-    const updated = await updateBook(book._id, {
-      status: "finished",
+    };
+  } else if (book.status === "currently-reading") {
+    nextStatus = "finished";
+    updateData = {
+      status: nextStatus,
       currentPage: book.totalPages,
       finishedAt: new Date().toISOString(),
-    });
-
-    replaceBook(updated);
-  } catch (e: any) {
-    error.value = e?.message || "Could not mark the book as finished.";
+    };
+  } else {
+    nextStatus = "want-to-read";
+    updateData = {
+      status: nextStatus,
+      currentPage: 0,
+    };
   }
-}
-
-async function handleStartOver(book: Book) {
-  if (!book._id) return;
 
   try {
-    const updated = await updateBook(book._id, {
-      status: "currently-reading",
-      currentPage: 0,
-      startedAt: new Date().toISOString(),
-    });
-
+    const updated = await updateBook(book._id, updateData);
     replaceBook(updated);
   } catch (e: any) {
-    error.value = e?.message || "Could not start over.";
+    error.value = e?.message || "Could not update book status.";
   }
 }
 
@@ -196,8 +212,7 @@ const filteredBooks = computed(() => {
 
   return books.value.filter((book) => {
     const matchesSearch =
-      !q ||
-      `${book.title} ${book.author}`.toLowerCase().includes(q);
+      !q || `${book.title} ${book.author}`.toLowerCase().includes(q);
 
     const matchesStatus =
       selectedStatus.value === "all" || book.status === selectedStatus.value;
@@ -205,6 +220,55 @@ const filteredBooks = computed(() => {
     return matchesSearch && matchesStatus;
   });
 });
+
+function openAddTimeModal(book: Book) {
+  selectedBookForTime.value = book;
+  minutesRead.value = 0;
+  pagesRead.value = 0;
+  addTimeError.value = "";
+  showAddTimeModal.value = true;
+}
+
+function closeAddTimeModal() {
+  selectedBookForTime.value = null;
+  minutesRead.value = 0;
+  pagesRead.value = 0;
+  addTimeError.value = "";
+  showAddTimeModal.value = false;
+}
+
+async function saveAddTime() {
+  const currentBook = selectedBookForTime.value;
+
+  if (!currentBook || !currentBook._id) return;
+
+  if (pagesRead.value < 0 || minutesRead.value < 0) {
+    addTimeError.value = "Values cannot be negative.";
+    return;
+  }
+
+  const nextPage = (currentBook.currentPage ?? 0) + pagesRead.value;
+  const clampedPage = Math.min(nextPage, currentBook.totalPages);
+
+  try {
+    const updated = await updateBook(currentBook._id, {
+      currentPage: clampedPage,
+      status:
+        clampedPage >= currentBook.totalPages
+          ? "finished"
+          : "currently-reading",
+      finishedAt:
+        clampedPage >= currentBook.totalPages
+          ? new Date().toISOString()
+          : undefined,
+    });
+
+    replaceBook(updated);
+    closeAddTimeModal();
+  } catch (e: any) {
+    addTimeError.value = e?.message || "Could not save reading session.";
+  }
+}
 
 onMounted(loadBooks);
 </script>
@@ -220,7 +284,9 @@ onMounted(loadBooks);
         <div>
           <h1 class="library__title">My Library</h1>
           <p class="library__subtitle">
-            {{ filteredBooks.length }} book{{ filteredBooks.length === 1 ? "" : "s" }}
+            {{ filteredBooks.length }} book{{
+              filteredBooks.length === 1 ? "" : "s"
+            }}
             in your collection
           </p>
         </div>
@@ -278,11 +344,10 @@ onMounted(loadBooks);
           v-for="book in filteredBooks"
           :key="book._id"
           :book="book"
-          @toggle-favorite="toggleFavorite"
           @delete-book="handleDeleteBook"
-          @start-reading="handleStartReading"
-          @mark-finished="handleMarkFinished"
-          @start-over="handleStartOver"
+          @edit-book="openEditModal"
+          @cycle-status="handleCycleStatus"
+          @add-time="openAddTimeModal"
         />
       </div>
 
@@ -293,8 +358,22 @@ onMounted(loadBooks);
         v-model="form"
         :loading="loading"
         :error="formError"
+        :mode="modalMode"
         @submit="saveBook"
         @close="closeModal"
+      />
+
+      <AddTimeModal
+        v-model:open="showAddTimeModal"
+        :loading="loading"
+        :error="addTimeError"
+        :book-title="selectedBookForTime?.title"
+        :minutes-read="minutesRead"
+        :pages-read="pagesRead"
+        @update:minutesRead="minutesRead = $event"
+        @update:pagesRead="pagesRead = $event"
+        @submit="saveAddTime"
+        @close="closeAddTimeModal"
       />
     </section>
   </AppShell>

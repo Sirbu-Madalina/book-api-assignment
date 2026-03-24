@@ -1,14 +1,15 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { CreateBookInput, ReadingStatus } from "../services/books";
 
 const open = defineModel<boolean>("open", { default: false });
+
 const model = defineModel<CreateBookInput>({
   default: () => ({
     title: "",
     author: "",
     coverImage: "",
     description: "",
-    genre: "",
     totalPages: 1,
     currentPage: 0,
     status: "want-to-read",
@@ -17,10 +18,16 @@ const model = defineModel<CreateBookInput>({
   }),
 });
 
-const props = defineProps<{
-  loading?: boolean;
-  error?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    loading?: boolean;
+    error?: string;
+    mode?: "add" | "edit";
+  }>(),
+  {
+    mode: "add",
+  }
+);
 
 defineEmits<{
   (e: "submit"): void;
@@ -32,15 +39,21 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
   { value: "currently-reading", label: "Currently Reading" },
   { value: "finished", label: "Finished" },
 ];
+
+const modalTitle = computed(() =>
+  props.mode === "edit" ? "Edit Book" : "Add a New Book"
+);
+
+const submitLabel = computed(() =>
+  props.mode === "edit" ? "Save Changes" : "Add Book"
+);
 </script>
 
 <template>
   <div v-if="open" class="overlay" @click.self="$emit('close')">
     <div class="modal">
       <div class="modal__header">
-        <div>
-          <h2 class="modal__title">Add a New Book</h2>
-        </div>
+        <h2 class="modal__title">{{ modalTitle }}</h2>
 
         <button
           class="close-btn"
@@ -54,7 +67,7 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
 
       <div class="modal__body">
         <div class="form-grid">
-          <label class="field field--full">
+          <label class="field">
             <span class="field__label">Title</span>
             <input
               v-model="model.title"
@@ -63,7 +76,7 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
             />
           </label>
 
-          <label class="field field--full">
+          <label class="field">
             <span class="field__label">Author</span>
             <input
               v-model="model.author"
@@ -72,7 +85,7 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
             />
           </label>
 
-          <label class="field field--full">
+          <label class="field">
             <span class="field__label">Cover image URL</span>
             <input
               v-model="model.coverImage"
@@ -81,32 +94,34 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
             />
           </label>
 
-          <label class="field">
-            <span class="field__label">Total Pages</span>
-            <input
-              v-model.number="model.totalPages"
-              type="number"
-              min="1"
-              placeholder="e.g. 350"
-            />
-          </label>
+          <div class="form-row">
+            <label class="field">
+              <span class="field__label">Total Pages</span>
+              <input
+                v-model.number="model.totalPages"
+                type="number"
+                min="1"
+                placeholder="e.g. 350"
+              />
+            </label>
 
-          <label class="field">
-            <span class="field__label">Status</span>
-            <select v-model="model.status">
-              <option
-                v-for="option in statusOptions"
-                :key="option.value"
-                :value="option.value"
-              >
-                {{ option.label }}
-              </option>
-            </select>
-          </label>
+            <label class="field">
+              <span class="field__label">Status</span>
+              <select v-model="model.status">
+                <option
+                  v-for="option in statusOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+          </div>
 
-          <label class="field field--checkbox">
+          <label class="checkbox-row">
             <input v-model="model.isFavorite" type="checkbox" />
-            <span class="field__label">Mark as favorite</span>
+            <span>Mark as favorite</span>
           </label>
         </div>
 
@@ -126,7 +141,7 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
           :disabled="props.loading"
           @click="$emit('submit')"
         >
-          {{ props.loading ? "Saving..." : "Add Book" }}
+          {{ props.loading ? "Saving..." : submitLabel }}
         </button>
       </div>
     </div>
@@ -156,7 +171,7 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
 
 .modal__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 22px 22px 16px;
@@ -173,7 +188,6 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
 }
 
 .close-btn {
-  flex-shrink: 0;
   width: 42px;
   height: 42px;
   display: grid;
@@ -184,7 +198,6 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
   color: #344054;
   font-size: 1rem;
   cursor: pointer;
-  transition: 0.2s ease;
 }
 
 .close-btn:hover {
@@ -197,17 +210,18 @@ const statusOptions: { value: ReadingStatus; label: string }[] = [
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
 .field {
   display: grid;
   gap: 8px;
-}
-
-.field--full {
-  grid-column: 1 / -1;
 }
 
 .field__label {
@@ -227,7 +241,6 @@ select {
   font: inherit;
   color: #1f2430;
   outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
   box-sizing: border-box;
 }
 
@@ -241,14 +254,15 @@ select:focus {
   box-shadow: 0 0 0 4px rgba(126, 151, 118, 0.12);
 }
 
-.field--checkbox {
+.checkbox-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-top: 4px;
+  font-weight: 600;
+  color: #344054;
 }
 
-.field--checkbox input {
+.checkbox-row input {
   width: 18px;
   height: 18px;
   accent-color: #7e9776;
@@ -281,7 +295,6 @@ select:focus {
   font-weight: 800;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: 0.2s ease;
 }
 
 .btn--ghost {
@@ -327,6 +340,10 @@ select:focus {
 
   .modal__title {
     font-size: 1.6rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
   }
 
   .modal__footer {

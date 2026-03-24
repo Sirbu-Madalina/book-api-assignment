@@ -4,7 +4,18 @@ import AppShell from "../components/layout/AppShell.vue";
 import AppSidebar from "../components/layout/AppSidebar.vue";
 import StatCard from "../components/dashboard/StatCard.vue";
 import ProgressBar from "../components/common/ProgressBar.vue";
-import { getBooks, type Book } from "../services/books";
+import BookCard from "../components/BookCard.vue";
+import BookFormModal from "../components/BookFormModal.vue";
+import AddTimeModal from "../components/AddTimeModal.vue";
+
+import {
+  getBooks,
+  updateBook,
+  deleteBook,
+  type Book,
+  type CreateBookInput,
+  type ReadingStatus,
+} from "../services/books";
 import { getYearlyReadingGoal } from "../services/auth";
 
 const books = ref<Book[]>([]);
@@ -12,6 +23,37 @@ const loading = ref(false);
 const error = ref("");
 
 const yearlyGoal = ref(getYearlyReadingGoal() ?? 12);
+const monthlyGoal = ref(
+  Number(localStorage.getItem("monthlyReadingGoal")) || 3,
+);
+
+// edit modal
+const showModal = ref(false);
+const formError = ref("");
+const form = ref<CreateBookInput>(emptyForm());
+const modalMode = ref<"add" | "edit">("edit");
+const editingBookId = ref<string | null>(null);
+
+// add time modal
+const showAddTimeModal = ref(false);
+const addTimeError = ref("");
+const selectedBookForTime = ref<Book | null>(null);
+const minutesRead = ref(0);
+const pagesRead = ref(0);
+
+function emptyForm(): CreateBookInput {
+  return {
+    title: "",
+    author: "",
+    coverImage: "",
+    description: "",
+    totalPages: 1,
+    currentPage: 0,
+    status: "want-to-read",
+    targetDate: "",
+    isFavorite: false,
+  };
+}
 
 async function loadBooks() {
   loading.value = true;
@@ -23,6 +65,13 @@ async function loadBooks() {
     error.value = e?.message || "Failed to load dashboard data.";
   } finally {
     loading.value = false;
+  }
+}
+
+function replaceBook(updated: Book) {
+  const index = books.value.findIndex((b) => b._id === updated._id);
+  if (index >= 0) {
+    books.value[index] = updated;
   }
 }
 
@@ -47,24 +96,26 @@ function isThisYear(dateString?: string) {
   return date.getFullYear() === now.getFullYear();
 }
 
-const booksFinishedThisMonth = computed(() =>
-  books.value.filter(
-    (book) => book.status === "finished" && isThisMonth(book.finishedAt)
-  ).length
+const booksFinishedThisMonth = computed(
+  () =>
+    books.value.filter(
+      (book) => book.status === "finished" && isThisMonth(book.finishedAt),
+    ).length,
 );
 
-const booksFinishedThisYear = computed(() =>
-  books.value.filter(
-    (book) => book.status === "finished" && isThisYear(book.finishedAt)
-  ).length
+const booksFinishedThisYear = computed(
+  () =>
+    books.value.filter(
+      (book) => book.status === "finished" && isThisYear(book.finishedAt),
+    ).length,
 );
 
 const currentlyReading = computed(() =>
-  books.value.filter((book) => book.status === "currently-reading")
+  books.value.filter((book) => book.status === "currently-reading"),
 );
 
 const wantToRead = computed(() =>
-  books.value.filter((book) => book.status === "want-to-read")
+  books.value.filter((book) => book.status === "want-to-read"),
 );
 
 const recentlyFinished = computed(() =>
@@ -73,9 +124,9 @@ const recentlyFinished = computed(() =>
     .sort(
       (a, b) =>
         new Date(b.finishedAt || "").getTime() -
-        new Date(a.finishedAt || "").getTime()
+        new Date(a.finishedAt || "").getTime(),
     )
-    .slice(0, 5)
+    .slice(0, 5),
 );
 
 const yearlyGoalPercent = computed(() => {
@@ -83,14 +134,172 @@ const yearlyGoalPercent = computed(() => {
   return Math.round((booksFinishedThisYear.value / yearlyGoal.value) * 100);
 });
 
-function progressPercent(current: number, total: number) {
-  if (!total) return 0;
-  return Math.round((current / total) * 100);
+function validateForm() {
+  formError.value = "";
+
+  const missing: string[] = [];
+
+  if (!form.value.title.trim()) missing.push("Title");
+  if (!form.value.author.trim()) missing.push("Author");
+  if (!form.value.coverImage.trim()) missing.push("Cover image");
+  if (!form.value.totalPages || form.value.totalPages < 1) {
+    missing.push("Total pages");
+  }
+
+  if (missing.length > 0) {
+    formError.value = `Please fill in: ${missing.join(", ")}.`;
+    return false;
+  }
+
+  if ((form.value.currentPage ?? 0) > form.value.totalPages) {
+    formError.value = "Current page cannot be greater than total pages.";
+    return false;
+  }
+
+  return true;
 }
 
-function bookCoverColor(index: number) {
-  const colors = ["#7E9776", "#C6A22E", "#C77A45", "#8B7E74"];
-  return colors[index % colors.length];
+function openEditModal(book: Book) {
+  if (!book._id) return;
+
+  formError.value = "";
+  modalMode.value = "edit";
+  editingBookId.value = book._id;
+
+  form.value = {
+    title: book.title,
+    author: book.author,
+    coverImage: book.coverImage,
+    description: book.description ?? "",
+    totalPages: book.totalPages,
+    currentPage: book.currentPage ?? 0,
+    status: book.status,
+    targetDate: book.targetDate ?? "",
+    isFavorite: book.isFavorite ?? false,
+  };
+
+  showModal.value = true;
+}
+
+function closeModal() {
+  formError.value = "";
+  editingBookId.value = null;
+  showModal.value = false;
+}
+
+async function saveBook() {
+  formError.value = "";
+
+  if (!validateForm()) return;
+  if (!editingBookId.value) return;
+
+  loading.value = true;
+
+  try {
+    const updated = await updateBook(editingBookId.value, form.value);
+    replaceBook(updated);
+    closeModal();
+  } catch (e: any) {
+    formError.value = e?.message || "Could not save the book.";
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleDeleteBook(book: Book) {
+  if (!book._id) return;
+
+  try {
+    await deleteBook(book._id);
+    books.value = books.value.filter((b) => b._id !== book._id);
+  } catch (e: any) {
+    error.value = e?.message || "Could not delete the book.";
+  }
+}
+
+async function handleCycleStatus(book: Book) {
+  if (!book._id) return;
+
+  let nextStatus: ReadingStatus = "want-to-read";
+  let updateData: Partial<CreateBookInput> = {};
+
+  if (book.status === "want-to-read") {
+    nextStatus = "currently-reading";
+    updateData = {
+      status: nextStatus,
+      startedAt: new Date().toISOString(),
+      currentPage: book.currentPage ?? 0,
+    };
+  } else if (book.status === "currently-reading") {
+    nextStatus = "finished";
+    updateData = {
+      status: nextStatus,
+      currentPage: book.totalPages,
+      finishedAt: new Date().toISOString(),
+    };
+  } else {
+    nextStatus = "want-to-read";
+    updateData = {
+      status: nextStatus,
+      currentPage: 0,
+    };
+  }
+
+  try {
+    const updated = await updateBook(book._id, updateData);
+    replaceBook(updated);
+  } catch (e: any) {
+    error.value = e?.message || "Could not update book status.";
+  }
+}
+
+function openAddTimeModal(book: Book) {
+  selectedBookForTime.value = book;
+  minutesRead.value = 0;
+  pagesRead.value = 0;
+  addTimeError.value = "";
+  showAddTimeModal.value = true;
+}
+
+function closeAddTimeModal() {
+  selectedBookForTime.value = null;
+  minutesRead.value = 0;
+  pagesRead.value = 0;
+  addTimeError.value = "";
+  showAddTimeModal.value = false;
+}
+
+async function saveAddTime() {
+  const currentBook = selectedBookForTime.value;
+
+  if (!currentBook || !currentBook._id) return;
+
+  if (pagesRead.value < 0 || minutesRead.value < 0) {
+    addTimeError.value = "Values cannot be negative.";
+    return;
+  }
+
+  const nextPage = (currentBook.currentPage ?? 0) + pagesRead.value;
+  const clampedPage = Math.min(nextPage, currentBook.totalPages);
+
+  try {
+    const updated = await updateBook(currentBook._id, {
+      currentPage: clampedPage,
+      status:
+        clampedPage >= currentBook.totalPages
+          ? "finished"
+          : "currently-reading",
+      finishedAt:
+        clampedPage >= currentBook.totalPages
+          ? new Date().toISOString()
+          : undefined,
+    });
+
+    replaceBook(updated);
+    closeAddTimeModal();
+  } catch (e: any) {
+    addTimeError.value = e?.message || "Could not save reading session.";
+  }
 }
 
 onMounted(loadBooks);
@@ -104,7 +313,7 @@ onMounted(loadBooks);
 
     <section class="dashboard">
       <header class="hero">
-        <h1 class="hero__title">Your Reading Nook</h1>
+        <h1 class="hero__title">Your Reading Notebook</h1>
         <p class="hero__subtitle">
           Welcome back — here's your reading snapshot.
         </p>
@@ -115,7 +324,11 @@ onMounted(loadBooks);
       </p>
 
       <section v-if="!loading" class="stats-grid">
-        <StatCard label="Books this month" :value="booksFinishedThisMonth" />
+        <StatCard
+          label="Books this month"
+          :value="booksFinishedThisMonth"
+          :hint="`Goal: ${monthlyGoal}`"
+        />
         <StatCard
           label="Books this year"
           :value="booksFinishedThisYear"
@@ -145,40 +358,18 @@ onMounted(loadBooks);
           <h2 class="section-title">Currently Reading</h2>
         </div>
 
-        <div v-if="loading" class="empty-state">
-          Loading books...
-        </div>
+        <div v-if="loading" class="empty-state">Loading books...</div>
 
-        <div v-else-if="currentlyReading.length" class="reading-grid">
-          <article
-            v-for="(book, index) in currentlyReading"
+        <div v-else-if="currentlyReading.length" class="books-grid">
+          <BookCard
+            v-for="book in currentlyReading"
             :key="book._id"
-            class="reading-card"
-          >
-            <div
-              class="reading-card__cover"
-              :style="{ background: bookCoverColor(index) }"
-            >
-              <div class="reading-card__cover-title">{{ book.title }}</div>
-              <div class="reading-card__cover-author">{{ book.author }}</div>
-            </div>
-
-            <div class="reading-card__content">
-              <h3 class="reading-card__title">{{ book.title }}</h3>
-              <p class="reading-card__author">{{ book.author }}</p>
-
-              <div class="reading-card__meta">
-                <span>Page {{ book.currentPage }} of {{ book.totalPages }}</span>
-                <span>{{ progressPercent(book.currentPage, book.totalPages) }}%</span>
-              </div>
-
-              <ProgressBar :value="book.currentPage" :max="book.totalPages" />
-
-              <p v-if="book.targetDate" class="reading-card__deadline">
-                Deadline: {{ new Date(book.targetDate).toLocaleDateString() }}
-              </p>
-            </div>
-          </article>
+            :book="book"
+            @delete-book="handleDeleteBook"
+            @edit-book="openEditModal"
+            @cycle-status="handleCycleStatus"
+            @add-time="openAddTimeModal"
+          />
         </div>
 
         <div v-else class="empty-state">
@@ -191,47 +382,45 @@ onMounted(loadBooks);
           <h2 class="section-title">Recently Finished</h2>
         </div>
 
-        <div v-if="loading" class="empty-state">
-          Loading finished books...
-        </div>
+        <div v-if="loading" class="empty-state">Loading finished books...</div>
 
-        <div v-else-if="recentlyFinished.length" class="session-list">
-          <article
-            v-for="(book, index) in recentlyFinished"
+        <div v-else-if="recentlyFinished.length" class="books-grid">
+          <BookCard
+            v-for="book in recentlyFinished"
             :key="book._id"
-            class="session-item"
-          >
-            <div
-              class="session-item__cover"
-              :style="{ background: bookCoverColor(index + 1) }"
-            >
-              <div class="session-item__cover-title">{{ book.title }}</div>
-              <div class="session-item__cover-author">{{ book.author }}</div>
-            </div>
-
-            <div class="session-item__main">
-              <h3 class="session-item__title">{{ book.title }}</h3>
-              <p class="session-item__date">
-                Finished:
-                {{
-                  book.finishedAt
-                    ? new Date(book.finishedAt).toLocaleDateString()
-                    : "-"
-                }}
-              </p>
-            </div>
-
-            <div class="session-item__stats">
-              <strong>{{ book.totalPages }} pages</strong>
-              <span>{{ book.genre }}</span>
-            </div>
-          </article>
+            :book="book"
+            @delete-book="handleDeleteBook"
+            @edit-book="openEditModal"
+            @cycle-status="handleCycleStatus"
+            @add-time="openAddTimeModal"
+          />
         </div>
 
-        <div v-else class="empty-state">
-          No finished books yet.
-        </div>
+        <div v-else class="empty-state">No finished books yet.</div>
       </section>
+
+      <BookFormModal
+        v-model:open="showModal"
+        v-model="form"
+        :loading="loading"
+        :error="formError"
+        :mode="modalMode"
+        @submit="saveBook"
+        @close="closeModal"
+      />
+
+      <AddTimeModal
+        v-model:open="showAddTimeModal"
+        :loading="loading"
+        :error="addTimeError"
+        :book-title="selectedBookForTime?.title"
+        :minutes-read="minutesRead"
+        :pages-read="pagesRead"
+        @update:minutesRead="minutesRead = $event"
+        @update:pagesRead="pagesRead = $event"
+        @submit="saveAddTime"
+        @close="closeAddTimeModal"
+      />
     </section>
   </AppShell>
 </template>
@@ -334,153 +523,11 @@ onMounted(loadBooks);
   gap: 14px;
 }
 
-.reading-grid {
+.books-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.reading-card {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 16px;
-  padding: 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.reading-card__cover {
-  min-height: 124px;
-  border-radius: 14px;
-  padding: 12px 10px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-
-.reading-card__cover-title {
-  font-size: 0.95rem;
-  line-height: 1.05;
-  font-weight: 700;
-}
-
-.reading-card__cover-author {
-  margin-top: 6px;
-  font-size: 0.72rem;
-  opacity: 0.9;
-}
-
-.reading-card__content {
-  display: grid;
-  align-content: start;
-  gap: 10px;
-}
-
-.reading-card__title {
-  margin: 0;
-  font-size: 1.5rem;
-  line-height: 1.1;
-  color: var(--text);
-  font-family: ui-serif, Georgia, Cambria, serif;
-}
-
-.reading-card__author {
-  margin: 0;
-  color: var(--text-soft);
-  font-size: 0.95rem;
-}
-
-.reading-card__meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--text-soft);
-  font-size: 0.88rem;
-}
-
-.reading-card__deadline {
-  margin: 0;
-  color: var(--accent);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.session-list {
-  display: grid;
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.session-item {
-  display: grid;
-  grid-template-columns: 56px 1fr auto;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 16px;
-}
-
-.session-item + .session-item {
-  border-top: 1px solid var(--border);
-}
-
-.session-item__cover {
-  width: 56px;
-  height: 78px;
-  border-radius: 12px;
-  padding: 8px 7px;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.session-item__cover-title {
-  font-size: 0.72rem;
-  line-height: 1.02;
-  font-weight: 700;
-}
-
-.session-item__cover-author {
-  margin-top: 4px;
-  font-size: 0.58rem;
-  opacity: 0.9;
-}
-
-.session-item__main {
-  min-width: 0;
-}
-
-.session-item__title {
-  margin: 0;
-  color: var(--text);
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.session-item__date {
-  margin: 4px 0 0;
-  color: var(--text-soft);
-  font-size: 0.88rem;
-}
-
-.session-item__stats {
-  display: grid;
-  justify-items: end;
-  gap: 4px;
-  color: var(--text-soft);
-  font-size: 0.88rem;
-}
-
-.session-item__stats strong {
-  color: var(--text);
-  font-size: 0.95rem;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 18px;
+  align-items: start;
 }
 
 .empty-state {
@@ -496,7 +543,7 @@ onMounted(loadBooks);
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .reading-grid {
+  .books-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -510,21 +557,8 @@ onMounted(loadBooks);
     grid-template-columns: 1fr;
   }
 
-  .reading-card {
-    grid-template-columns: 80px 1fr;
-  }
-
   .section-title {
     font-size: 1.55rem;
-  }
-
-  .session-item {
-    grid-template-columns: 48px 1fr;
-  }
-
-  .session-item__stats {
-    grid-column: 2;
-    justify-items: start;
   }
 }
 </style>

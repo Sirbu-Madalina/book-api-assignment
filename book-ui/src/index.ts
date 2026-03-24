@@ -4,6 +4,7 @@ import LoginView from "./views/LoginView.vue";
 import { isLoggedIn } from "./services/auth";
 import FavoritesView from "./views/FavoritesView.vue";
 import MyLibraryView from "./views/MyLibraryView.vue";
+import GoalsView from "./views/GoalsView.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -22,6 +23,11 @@ export const router = createRouter({
       path: "/library",
       name: "library",
       component: MyLibraryView,
+    },
+    {
+      path: "/goals",
+      name: "goals",
+      component: GoalsView,
     },
   ],
 });
