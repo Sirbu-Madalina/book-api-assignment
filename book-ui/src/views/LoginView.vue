@@ -66,31 +66,59 @@ async function submit() {
 
         <form class="form" @submit.prevent="submit">
           <div v-if="mode === 'register'" class="field">
-            <label>Name</label>
-            <input v-model="name" placeholder="Your name" />
+            <label for="name">Name</label>
+            <input
+              id="name"
+              v-model="name"
+              type="text"
+              placeholder="Your name"
+              autocomplete="name"
+            />
           </div>
 
           <div class="field">
-            <label>Email</label>
-            <input v-model="email" type="email" placeholder="you@example.com" />
+            <label for="email">Email</label>
+            <input
+              id="email"
+              v-model="email"
+              type="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+            />
           </div>
 
           <div class="field">
-            <label>Password</label>
-            <input v-model="password" type="password" placeholder="••••••••" />
+            <label for="password">Password</label>
+            <input
+              id="password"
+              v-model="password"
+              type="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            />
           </div>
 
           <p v-if="error" class="error">{{ error }}</p>
 
           <button class="btn" type="submit" :disabled="loading">
-            {{ loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create account" }}
+            {{
+              loading
+                ? "Please wait..."
+                : mode === "login"
+                  ? "Sign In"
+                  : "Create account"
+            }}
           </button>
 
           <p class="switch">
             <span v-if="mode === 'login'">Don't have an account?</span>
             <span v-else>Already have an account?</span>
 
-            <button type="button" class="link" @click="mode = mode === 'login' ? 'register' : 'login'">
+            <button
+              type="button"
+              class="link"
+              @click="mode = mode === 'login' ? 'register' : 'login'"
+            >
               {{ mode === "login" ? "Create one" : "Sign in" }}
             </button>
           </p>
