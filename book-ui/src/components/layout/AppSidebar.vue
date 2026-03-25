@@ -3,19 +3,40 @@ import { useRouter, useRoute } from "vue-router";
 import { logout } from "../../services/auth";
 import logoImg from "../../assets/logo.png";
 
+// Phosphor icons
+import {
+  PhSquaresFour,
+  PhBooks,
+  PhTarget,
+  PhTimer,
+  PhBookmarkSimple,
+  PhLock,
+} from "@phosphor-icons/vue";
+
 const router = useRouter();
 const route = useRoute();
 
 const menu = [
-  { label: "Dashboard", path: "/" },
-  { label: "My Library", path: "/library" },
-  { label: "Goals", path: "/goals" },
-  { label: "Sessions", path: "/sessions" },
-  { label: "Favorites", path: "/favorites" },
+  { label: "Dashboard", path: "/", icon: PhSquaresFour },
+  { label: "My Library", path: "/library", icon: PhBooks },
+  { label: "Goals", path: "/goals", icon: PhTarget },
+  {
+    label: "Sessions",
+    path: "/sessions",
+    icon: PhTimer,
+    disabled: true,
+  },
+  {
+    label: "Bookshelves",
+    path: "/bookshelves",
+    icon: PhBookmarkSimple,
+    disabled: true,
+  },
 ];
 
-function go(path: string) {
-  router.push(path);
+function go(item: any) {
+  if (item.disabled) return;
+  router.push(item.path);
 }
 
 function handleLogout() {
@@ -37,10 +58,22 @@ function handleLogout() {
           v-for="item in menu"
           :key="item.path"
           class="menu-item"
-          :class="{ active: route.path === item.path }"
-          @click="go(item.path)"
+          :class="{
+            active: route.path === item.path,
+            disabled: item.disabled,
+          }"
+          @click="go(item)"
         >
-          {{ item.label }}
+          <div class="menu-left">
+            <component :is="item.icon" size="20" weight="regular" />
+            <span>{{ item.label }}</span>
+          </div>
+
+          <PhLock
+            v-if="item.disabled"
+            size="16"
+            class="lock-icon"
+          />
         </button>
       </nav>
     </div>
@@ -59,30 +92,25 @@ function handleLogout() {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   padding: 32px 18px 24px;
-  background: transparent;
-  overflow: hidden;
 }
 
 .sidebar__top {
   display: grid;
   gap: 36px;
+  flex: 1;
+  align-content: start;
   min-height: 0;
 }
 
 .brand {
   display: grid;
-  justify-items: start;
   gap: 10px;
   padding-left: 4px;
 }
 
 .logo-img {
   width: 72px;
-  height: auto;
-  object-fit: contain;
-  display: block;
 }
 
 .logo-text {
@@ -90,7 +118,6 @@ function handleLogout() {
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--text);
-  line-height: 1;
 }
 
 .menu {
@@ -100,7 +127,9 @@ function handleLogout() {
 
 .menu-item {
   width: 100%;
-  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 13px 14px;
   border-radius: 16px;
   border: none;
@@ -109,10 +138,16 @@ function handleLogout() {
   color: var(--text-soft);
   font-weight: 600;
   font-size: 0.98rem;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.menu-item:hover {
+.menu-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-item:hover:not(.disabled) {
   background: rgba(0, 0, 0, 0.045);
   color: var(--text);
   transform: translateX(2px);
@@ -123,7 +158,17 @@ function handleLogout() {
   color: var(--text);
 }
 
+.menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lock-icon {
+  opacity: 0.7;
+}
+
 .sidebar__bottom {
+  margin-top: auto;
   padding-top: 20px;
 }
 
@@ -136,11 +181,9 @@ function handleLogout() {
   color: var(--text);
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .logout-btn:hover {
   background: #f4efe8;
-  transform: translateY(-1px);
 }
 </style>

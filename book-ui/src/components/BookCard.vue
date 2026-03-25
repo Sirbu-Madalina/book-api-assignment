@@ -41,7 +41,7 @@ const statusClass = computed(() => {
 });
 
 const showDeadline = computed(() => {
-  return props.book.status === "currently-reading" && !!props.book.targetDate;
+  return !!props.book.targetDate && props.book.status !== "finished";
 });
 
 const canAddTime = computed(() => {

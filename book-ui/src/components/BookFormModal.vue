@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { PhX } from "@phosphor-icons/vue";
 import type { CreateBookInput, ReadingStatus } from "../services/books";
 
 const open = defineModel<boolean>("open", { default: false });
@@ -51,7 +52,7 @@ const submitLabel = computed(() =>
 
 <template>
   <div v-if="open" class="overlay" @click.self="$emit('close')">
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" :aria-label="modalTitle">
       <div class="modal__header">
         <h2 class="modal__title">{{ modalTitle }}</h2>
 
@@ -61,7 +62,7 @@ const submitLabel = computed(() =>
           @click="$emit('close')"
           aria-label="Close modal"
         >
-          ✕
+          <PhX :size="24" weight="regular" />
         </button>
       </div>
 
@@ -119,9 +120,12 @@ const submitLabel = computed(() =>
             </label>
           </div>
 
-          <label class="checkbox-row">
-            <input v-model="model.isFavorite" type="checkbox" />
-            <span>Mark as favorite</span>
+          <label class="field">
+            <span class="field__label">
+              Deadline
+              <span class="field__hint">(optional)</span>
+            </span>
+            <input v-model="model.targetDate" type="date" />
           </label>
         </div>
 
@@ -156,16 +160,15 @@ const submitLabel = computed(() =>
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(15, 23, 42, 0.34);
   backdrop-filter: blur(4px);
 }
 
 .modal {
-  width: min(560px, 100%);
+  width: min(720px, 100%);
   background: #fcfaf7;
-  border: 1px solid rgba(31, 36, 48, 0.12);
-  border-radius: 22px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+  border-radius: 28px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
   overflow: hidden;
 }
 
@@ -174,49 +177,49 @@ const submitLabel = computed(() =>
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 22px 22px 16px;
-  border-bottom: 1px solid rgba(31, 36, 48, 0.08);
+  padding: 28px 28px 8px;
 }
 
 .modal__title {
   margin: 0;
-  font-size: 2rem;
-  line-height: 1.08;
+  line-height: 1.02;
   color: #1f2430;
   font-family: ui-serif, Georgia, Cambria, serif;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
 }
 
 .close-btn {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(31, 36, 48, 0.08);
+  border: none;
   border-radius: 999px;
-  background: white;
-  color: #344054;
-  font-size: 1rem;
+  background: transparent;
+  color: #667085;
   cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
 }
 
 .close-btn:hover {
-  background: #f4efe8;
+  background: rgba(31, 36, 48, 0.05);
+  color: #1f2430;
 }
 
 .modal__body {
-  padding: 20px 22px 10px;
+  padding: 14px 28px 10px;
 }
 
 .form-grid {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 20px;
 }
 
 .field {
@@ -226,22 +229,30 @@ const submitLabel = computed(() =>
 
 .field__label {
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 600;
   color: #344054;
+}
+
+.field__hint {
+  font-weight: 400;
+  color: #98a2b3;
+  margin-left: 4px;
 }
 
 input,
 select {
   width: 100%;
   min-width: 0;
+  box-sizing: border-box;
   border: 1px solid rgba(31, 36, 48, 0.12);
-  border-radius: 14px;
-  background: white;
-  padding: 13px 14px;
+  border-radius: 16px;
+  background: #fff;
+  padding: 15px 18px;
   font: inherit;
+  font-size: 1rem;
   color: #1f2430;
   outline: none;
-  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 input::placeholder {
@@ -254,20 +265,6 @@ select:focus {
   box-shadow: 0 0 0 4px rgba(126, 151, 118, 0.12);
 }
 
-.checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 600;
-  color: #344054;
-}
-
-.checkbox-row input {
-  width: 18px;
-  height: 18px;
-  accent-color: #7e9776;
-}
-
 .error {
   margin: 18px 0 0;
   padding: 12px 14px;
@@ -275,45 +272,45 @@ select:focus {
   background: #fef3f2;
   border: 1px solid #fecdca;
   color: #b42318;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 
 .modal__footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 18px 22px 22px;
-  border-top: 1px solid rgba(31, 36, 48, 0.08);
-  background: rgba(252, 250, 247, 0.95);
+  gap: 14px;
+  padding: 18px 28px 28px;
 }
 
 .btn {
-  height: 46px;
-  padding: 0 18px;
-  border-radius: 14px;
+  min-width: 120px;
+  height: 52px;
+  padding: 0 22px;
+  border-radius: 16px;
   border: 1px solid rgba(31, 36, 48, 0.12);
-  font-weight: 800;
   font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 
 .btn--ghost {
-  background: white;
+  background: #fff;
   color: #344054;
 }
 
 .btn--ghost:hover {
-  background: #f4efe8;
+  background: #f7f4ef;
 }
 
 .btn--primary {
-  background: #7e9776;
-  color: white;
+  background: #8aa17f;
+  color: #fff;
   border-color: transparent;
 }
 
 .btn--primary:hover {
-  background: #6e8966;
+  background: #7a9270;
 }
 
 .btn--primary:disabled {
@@ -328,26 +325,25 @@ select:focus {
 
   .modal {
     width: 100%;
-    border-radius: 18px;
+    border-radius: 22px;
   }
 
-  .modal__header,
-  .modal__body,
+  .modal__header {
+    padding: 22px 18px 8px;
+  }
+
+  .modal__body {
+    padding: 12px 18px 10px;
+  }
+
   .modal__footer {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .modal__title {
-    font-size: 1.6rem;
+    padding: 16px 18px 18px;
+    flex-direction: column-reverse;
   }
 
   .form-row {
     grid-template-columns: 1fr;
-  }
-
-  .modal__footer {
-    flex-direction: column-reverse;
+    gap: 18px;
   }
 
   .btn {
