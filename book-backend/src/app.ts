@@ -1,49 +1,44 @@
-import express, { Application, Request, Response } from "express";
+import express, { Application } from "express";
 import dotenvFlow from "dotenv-flow";
-import { testConnection } from './repository/database';
-import routes from './routes';
+import cors from "cors";
+import routes from "./routes";
 import { setupDocs } from "./util/documentation";
-import cors from 'cors';
+import { testConnection } from "./repository/database";
 
 dotenvFlow.config();
 
 const app: Application = express();
 
-//CORS Setup
-function setupCors(){
-  app.use(cors({
-    //Allow request from any origin
-    origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
-
-    //Allow methods 
-    methods:'GET, PUT, POST, DELETE',
-
-    //Allow Headers
-    allowedHeaders: ['auth-token', 'Origin', 'X-Request-Width', 'Content-Type', 'Accept'],
-
-    //Allow credentials
-    credentials:true
-  }))
+function setupCors() {
+  app.use(
+    cors({
+      origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+      methods: "GET, PUT, POST, DELETE",
+      allowedHeaders: [
+        "auth-token",
+        "Origin",
+        "X-Request-Width",
+        "Content-Type",
+        "Accept",
+      ],
+      credentials: true,
+    })
+  );
 }
 
+setupCors();
+app.use(express.json());
+app.use("/api", routes);
+setupDocs(app);
 
-export function startServer() {
+export async function startServer() {
+  await testConnection();
 
-  setupCors();
-  
-//makes the app understand json
-  app.use(express.json());
+  const PORT: number = parseInt(process.env.PORT as string) || 4000;
 
-  app.use('/api', routes);
-
-  setupDocs(app);
-
-//test connection to the database
-  testConnection();
-
-  const PORT: number = parseInt (process.env.PORT as string) || 4000;
-  app.listen(PORT, function() {
+  app.listen(PORT, function () {
     console.log("Server running on port: " + PORT);
   });
 }
 
+export default app;

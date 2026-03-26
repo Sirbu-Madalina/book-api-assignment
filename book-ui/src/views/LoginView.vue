@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { login, register } from "../services/auth";
 import { useRouter } from "vue-router";
-
+import logoImg from "../assets/logo.png";
 
 const router = useRouter();
 
@@ -36,39 +36,20 @@ async function submit() {
 
 <template>
   <main class="auth">
-    <!-- Left / Brand -->
-    <section class="auth__brand" aria-label="Brand section">
+    <!-- Left -->
+    <section class="auth__brand">
       <div class="brand">
-        <div class="brand__icon" aria-hidden="true">
-          <!-- simple book icon (SVG) -->
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M4.5 5.5C4.5 4.67157 5.17157 4 6 4h5c1.1046 0 2 .89543 2 2v14c0-1.1046-.8954-2-2-2H6c-.82843 0-1.5-.6716-1.5-1.5v-11Z"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M19.5 5.5C19.5 4.67157 18.8284 4 18 4h-5c-1.1046 0-2 .89543-2 2v14c0-1.1046.8954-2 2-2h5c.8284 0 1.5-.6716 1.5-1.5v-11Z"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </div>
+        <img :src="logoImg" alt="PageTurn logo" class="brand__logo" />
 
         <h1 class="brand__title">Your Personal Library</h1>
         <p class="brand__subtitle">
-          Catalog, discover, and organize your book collection with <br />
-          ease.
+          Catalog, discover, and organize your book collection with ease.
         </p>
       </div>
     </section>
 
-    <!-- Right / Form -->
-    <section class="auth__panel" aria-label="Authentication section">
+    <!-- Right -->
+    <section class="auth__panel">
       <div class="panel">
         <header class="panel__head">
           <h2 class="panel__title">
@@ -83,54 +64,43 @@ async function submit() {
           </p>
         </header>
 
-        <form class="form" @submit.prevent="submit" novalidate>
+        <form class="form" @submit.prevent="submit">
           <div v-if="mode === 'register'" class="field">
-            <label class="field__label" for="name">Name</label>
+            <label for="name">Name</label>
             <input
               id="name"
-              v-model.trim="name"
-              class="field__input"
+              v-model="name"
               type="text"
-              autocomplete="name"
-              required
-              minlength="2"
               placeholder="Your name"
+              autocomplete="name"
             />
           </div>
 
           <div class="field">
-            <label class="field__label" for="email">Email</label>
+            <label for="email">Email</label>
             <input
               id="email"
-              v-model.trim="email"
-              class="field__input"
+              v-model="email"
               type="email"
-              autocomplete="email"
-              required
               placeholder="you@example.com"
+              autocomplete="email"
             />
           </div>
 
           <div class="field">
-            <label class="field__label" for="password">Password</label>
+            <label for="password">Password</label>
             <input
               id="password"
               v-model="password"
-              class="field__input"
               type="password"
-              autocomplete="current-password"
-              required
-              minlength="6"
               placeholder="••••••••"
+              autocomplete="current-password"
             />
           </div>
 
-          <p v-if="error" class="form__error" role="alert">
-            {{ error }}
-          </p>
+          <p v-if="error" class="error">{{ error }}</p>
 
           <button class="btn" type="submit" :disabled="loading">
-            <span v-if="loading" class="spinner" aria-hidden="true"></span>
             {{
               loading
                 ? "Please wait..."
@@ -140,7 +110,7 @@ async function submit() {
             }}
           </button>
 
-          <p class="form__switch">
+          <p class="switch">
             <span v-if="mode === 'login'">Don't have an account?</span>
             <span v-else>Already have an account?</span>
 
@@ -159,97 +129,68 @@ async function submit() {
 </template>
 
 <style scoped>
-/* ===== Theme ===== */
 .auth {
-  --bg-left: #e9e2d8; /* warm beige */
-  --bg-right: #f7f3ee; /* lighter beige */
+  --green: #7e9776;
+  --green-soft: #dbe5d7;
+  --bg-left: #e9e2d8;
+  --bg-right: #f7f3ee;
   --text: #1f2430;
   --muted: #6b7280;
-  --card: #f7f3ee;
-  --border: rgba(31, 36, 48, 0.12);
-  --input-bg: rgba(255, 255, 255, 0.55);
-  --accent: #e5971a; /* orange button */
-  --accent-hover: #d88b12;
-  --danger: #b42318;
 
-  min-height: 100dvh;
-  overflow: hidden;
+  min-height: 100vh;
   display: grid;
-  grid-template-columns: 1.15fr 1fr;
+  grid-template-columns: 1.1fr 1fr;
 }
 
-/* ===== Left brand ===== */
+/* LEFT */
 .auth__brand {
   background: var(--bg-left);
   display: grid;
   place-items: center;
-  padding: clamp(24px, 5vw, 72px);
+  padding: 60px;
 }
 
 .brand {
   text-align: center;
-  max-width: 520px;
-  padding: 8px;
 }
 
-.brand__icon {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 18px;
-  display: grid;
-  place-items: center;
-  color: var(--accent);
+.brand__logo {
+  width: 200px;
+  margin-bottom: 16px;
 }
 
 .brand__title {
-  margin: 0 0 10px;
-  font-size: clamp(30px, 3.2vw, 44px);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  color: var(--text);
-  font-weight: 700;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size: 42px;
+  font-family: ui-serif, Georgia, serif;
+  margin-bottom: 10px;
 }
 
 .brand__subtitle {
-  margin: 0;
   color: var(--muted);
-  font-size: 15px;
-  line-height: 1.7;
 }
 
-/* ===== Right panel ===== */
+/* RIGHT */
 .auth__panel {
   background: var(--bg-right);
   display: grid;
   place-items: center;
-  padding: clamp(24px, 4vw, 72px);
 }
 
 .panel {
-  width: min(420px, 92vw);
-}
-
-.panel__head {
-  margin-bottom: 20px;
+  width: 360px;
 }
 
 .panel__title {
-  margin: 0 0 8px;
   font-size: 32px;
-  line-height: 1.1;
-  color: var(--text);
-  font-weight: 700;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-family: ui-serif, Georgia, serif;
 }
 
 .panel__desc {
-  margin: 0;
   color: var(--muted);
-  font-size: 14px;
+  margin-bottom: 20px;
 }
 
-/* ===== Form ===== */
+/* FORM */
 .form {
   display: grid;
   gap: 14px;
@@ -257,118 +198,62 @@ async function submit() {
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
-.field__label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.field__input {
+input {
   height: 44px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--input-bg);
-  padding: 0 14px;
-  color: var(--text);
+  border: 1px solid #ddd;
+  padding: 0 12px;
+}
+
+input:focus {
   outline: none;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(126, 151, 118, 0.2);
 }
 
-.field__input::placeholder {
-  color: rgba(31, 36, 48, 0.45);
-}
-
-.field__input:focus {
-  border-color: rgba(229, 151, 26, 0.55);
-  box-shadow: 0 0 0 4px rgba(229, 151, 26, 0.18);
-}
-
-.form__error {
-  margin: 2px 0 0;
-  color: var(--danger);
-  font-size: 13px;
-}
-
-/* Button */
+/* BUTTON */
 .btn {
-  height: 44px;
+  height: 46px;
   border-radius: 12px;
-  border: 0;
-  background: var(--accent);
+  background: var(--green);
   color: white;
-  font-weight: 700;
+  font-weight: 600;
+  border: none;
   cursor: pointer;
-  transition: transform 0.06s ease, background 0.15s ease, opacity 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 6px;
 }
 
 .btn:hover {
-  background: var(--accent-hover);
+  background: #6e8966;
 }
 
-.btn:active {
-  transform: translateY(1px);
-}
-
-.btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-/* tiny spinner */
-.spinner {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.55);
-  border-top-color: white;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Switch line */
-.form__switch {
-  margin: 8px 0 0;
+/* TEXT */
+.switch {
+  text-align: center;
   font-size: 13px;
   color: var(--muted);
-  text-align: center;
 }
 
 .link {
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  font-weight: 700;
+  background: none;
+  border: none;
+  color: var(--green);
+  font-weight: 600;
   cursor: pointer;
-  padding: 0 0 0 6px;
 }
 
-.link:hover {
-  text-decoration: underline;
+/* ERROR */
+.error {
+  color: #b42318;
+  font-size: 13px;
 }
 
-/* ===== Responsive ===== */
+/* MOBILE */
 @media (max-width: 900px) {
   .auth {
     grid-template-columns: 1fr;
-  }
-  .auth__brand {
-    padding: 36px 22px;
-  }
-  .brand__subtitle br {
-    display: none;
   }
 }
 </style>

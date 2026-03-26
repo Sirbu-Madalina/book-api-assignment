@@ -5,8 +5,19 @@ import Joi, { ValidationResult } from "joi";
 import { User } from "../interfaces/user";
 import * as authService from "../services/authService";
 
-// verify JWT token middleware
-export function verifyToken(req: Request, res: Response, next: NextFunction) {
+export type AuthRequest = Request & {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+};
+
+export function verifyToken(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) {
   const token = req.header("auth-token");
 
   if (!token) {
@@ -15,7 +26,13 @@ export function verifyToken(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    authService.verifyJwtToken(token);
+    const decoded = authService.verifyJwtToken(token) as {
+      id: string;
+      name: string;
+      email: string;
+    };
+
+    req.user = decoded;
     next();
   } catch {
     res.status(401).send("Invalid Token");
@@ -49,8 +66,12 @@ export async function loginUser(req: Request, res: Response) {
   }
 
   try {
-    const { userId, token } = await authService.loginUserService(req.body);
-    res.status(200).header("auth-token", token).json({ error: null, data: { userId, token } });
+    const { userId, token, yearlyReadingGoal } =
+      await authService.loginUserService(req.body);
+      res.status(200).header("auth-token", token).json({
+      error: null,
+      data: { userId, token, yearlyReadingGoal },
+    });
   } catch (err: any) {
     res.status(err.status || 500).json({
       error: err.message || "Error logging in user",
@@ -61,7 +82,7 @@ export async function loginUser(req: Request, res: Response) {
 // validate registration
 export function validateUserRegistrationInfo(data: User): ValidationResult {
   const schema = Joi.object({
-    name: Joi.string().min(6).max(255).required(),
+    name: Joi.string().min(2).max(255).required(),
     email: Joi.string().email().min(6).max(255).required(),
     password: Joi.string().min(6).max(25).required(),
   });

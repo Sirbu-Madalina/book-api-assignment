@@ -1,36 +1,43 @@
 :root {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --bg: #f7f3ee;
+  --surface: #fcfaf7;
+  --surface-2: #ffffff;
+  --border: #e7ded2;
+
+  --text: #4b3527;
+  --text-soft: #8f7d6d;
+  --text-muted: #a39283;
+
+  --accent: #d57a3d;
+  --accent-soft: #f3e2d5;
+
+  --green: #7e9776;
+  --green-soft: #dbe5d7;
+
+  --shadow-sm: 0 1px 2px rgba(54, 39, 24, 0.04);
+  --shadow-md: 0 10px 30px rgba(54, 39, 24, 0.08);
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+
+  --sidebar-width: 232px;
+  --content-max: 1120px;
 }
 
-body, button, input, table, td, th {
-  font-family: inherit;
-}
-
-h1, h2, .brand {
-  font-family: ui-serif, Georgia, serif;
+body {
+  margin: 0;
+  height: 100%;
 }
 
 html,
-body {
-  height: auto;
-  margin: 0;
-  overflow-y: auto;
-}
-
+body,
 #app {
   height: 100%;
 }
 
-body {
-  margin: 0;
-  background: #f7f3ee;
-  color: #1f2430;
-}
-a {
-  color: #e5971a;
-  text-decoration: none;
-  font-weight: 600;
-}
-a:hover {
-  text-decoration: underline;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }

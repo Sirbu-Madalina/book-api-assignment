@@ -1,5 +1,6 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import * as bookService from "../services/bookService";
+import { AuthRequest } from "./authController";
 
 type IdParams = { id: string };
 
@@ -7,41 +8,54 @@ function isNonEmptyString(v: unknown) {
   return typeof v === "string" && v.trim().length > 0;
 }
 
-// Create book
-export async function createBook(req: Request, res: Response): Promise<void> {
+export async function createBook(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!isNonEmptyString(req.body?.image)) {
-      res.status(400).send("Image URL is required");
+    if (!req.user?.id) {
+      res.status(401).send("Unauthorized");
       return;
     }
 
-    const result = await bookService.createBookService(req.body);
+    if (!isNonEmptyString(req.body?.coverImage)) {
+      res.status(400).send("Cover image is required");
+      return;
+    }
+
+    const result = await bookService.createBookService(req.body, req.user.id);
     res.status(201).send(result);
   } catch (error: any) {
     if (error?.name === "ValidationError") {
       res.status(400).send(error.message);
       return;
     }
+
     res.status(500).send("Error in creating the book");
   }
 }
 
-// Get all books
-export async function getAllBooks(req: Request, res: Response): Promise<void> {
+export async function getAllBooks(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const result = await bookService.getAllBooksService();
+    if (!req.user?.id) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
+
+    const result = await bookService.getAllBooksService(req.user.id);
     res.status(200).send(result);
   } catch {
     res.status(500).send("Error in retrieving books");
   }
 }
 
-// Get book by id
-export async function getBookById(req: Request<IdParams>, res: Response): Promise<void> {
+export async function getBookById(req: AuthRequest & { params: IdParams }, res: Response): Promise<void> {
   const { id } = req.params;
 
   try {
-    const result = await bookService.getBookByIdService(id);
+    if (!req.user?.id) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
+
+    const result = await bookService.getBookByIdService(id, req.user.id);
 
     if (!result) {
       res.status(404).send("Book not found");
@@ -54,17 +68,21 @@ export async function getBookById(req: Request<IdParams>, res: Response): Promis
   }
 }
 
-// Update book by id
-export async function updateBookById(req: Request<IdParams>, res: Response): Promise<void> {
+export async function updateBookById(req: AuthRequest & { params: IdParams }, res: Response): Promise<void> {
   const { id } = req.params;
 
   try {
-    if ("image" in req.body && !isNonEmptyString(req.body?.image)) {
-      res.status(400).send("Image URL cannot be empty");
+    if (!req.user?.id) {
+      res.status(401).send("Unauthorized");
       return;
     }
 
-    const result = await bookService.updateBookByIdService(id, req.body);
+    if ("coverImage" in req.body && !isNonEmptyString(req.body?.coverImage)) {
+      res.status(400).send("Cover image cannot be empty");
+      return;
+    }
+
+    const result = await bookService.updateBookByIdService(id, req.body, req.user.id);
 
     if (!result) {
       res.status(404).send("Cannot update book with id=" + id);
@@ -77,16 +95,21 @@ export async function updateBookById(req: Request<IdParams>, res: Response): Pro
       res.status(400).send(error.message);
       return;
     }
+
     res.status(500).send("Error in updating book by id");
   }
 }
 
-// Delete book by id
-export async function deleteBookById(req: Request<IdParams>, res: Response): Promise<void> {
+export async function deleteBookById(req: AuthRequest & { params: IdParams }, res: Response): Promise<void> {
   const { id } = req.params;
 
   try {
-    const result = await bookService.deleteBookByIdService(id);
+    if (!req.user?.id) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
+
+    const result = await bookService.deleteBookByIdService(id, req.user.id);
 
     if (!result) {
       res.status(404).send("Cannot delete book with id=" + id);

@@ -1,33 +1,33 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "./views/HomeView.vue";
 import LoginView from "./views/LoginView.vue";
-import AdminView from "./views/AdminView.vue"; 
 import { isLoggedIn } from "./services/auth";
-import CartView from "./views/CartView.vue";
 import FavoritesView from "./views/FavoritesView.vue";
+import MyLibraryView from "./views/MyLibraryView.vue";
+import GoalsView from "./views/GoalsView.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", component: HomeView },
-    { 
-      path: "/login", 
-      component: LoginView, 
-      meta: { layout: "auth" } 
+    {
+      path: "/login",
+      component: LoginView,
+      meta: { layout: "auth" },
     },
-    { 
-      path: "/admin", 
-      component: AdminView,
-
-      meta: { requiresAuth: true } 
+    {
+      path: "/favorites",
+      component: FavoritesView,
     },
-    { 
-      path: "/cart", 
-      component: CartView 
+    {
+      path: "/library",
+      name: "library",
+      component: MyLibraryView,
     },
-    { 
-      path: "/favorites", 
-      component: FavoritesView 
+    {
+      path: "/goals",
+      name: "goals",
+      component: GoalsView,
     },
   ],
 });

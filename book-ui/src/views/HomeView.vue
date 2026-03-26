@@ -1,435 +1,564 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import type { Book } from "../services/books";
-import { getBooks, createBook } from "../services/books";
-import { isLoggedIn } from "../services/auth";
-
+import AppShell from "../components/layout/AppShell.vue";
+import AppSidebar from "../components/layout/AppSidebar.vue";
+import StatCard from "../components/dashboard/StatCard.vue";
+import ProgressBar from "../components/common/ProgressBar.vue";
 import BookCard from "../components/BookCard.vue";
 import BookFormModal from "../components/BookFormModal.vue";
+import AddTimeModal from "../components/AddTimeModal.vue";
 
-import { useCart } from "../composables/useCart";
-import { useSavedBooks } from "../composables/useSavedBooks";
+import {
+  getBooks,
+  updateBook,
+  deleteBook,
+  type Book,
+  type CreateBookInput,
+  type ReadingStatus,
+} from "../services/books";
+import { getYearlyReadingGoal } from "../services/auth";
 
 const books = ref<Book[]>([]);
-const error = ref("");
 const loading = ref(false);
-const query = ref("");
+const error = ref("");
 
-// modal state
+const yearlyGoal = ref(getYearlyReadingGoal() ?? 12);
+const monthlyGoal = ref(
+  Number(localStorage.getItem("monthlyReadingGoal")) || 3,
+);
+
+// edit modal
 const showModal = ref(false);
 const formError = ref("");
+const form = ref<CreateBookInput>(emptyForm());
+const modalMode = ref<"add" | "edit">("edit");
+const editingBookId = ref<string | null>(null);
 
-// composables
-const { addToCart } = useCart();
-const { toggleSave, isSaved } = useSavedBooks();
+// add time modal
+const showAddTimeModal = ref(false);
+const addTimeError = ref("");
+const selectedBookForTime = ref<Book | null>(null);
+const minutesRead = ref(0);
+const pagesRead = ref(0);
 
-// form state
-const form = ref<Book>(emptyForm());
-
-function emptyForm(): Book {
+function emptyForm(): CreateBookInput {
   return {
     title: "",
     author: "",
-    image: "",
+    coverImage: "",
     description: "",
-    publishedYear: new Date().getFullYear(),
-    genre: "",
-    price: 0,
-    stockQuantity: 0,
-    inStock: false,
+    totalPages: 1,
+    currentPage: 0,
+    status: "want-to-read",
+    targetDate: "",
+    isFavorite: false,
   };
 }
 
 async function loadBooks() {
-  error.value = "";
   loading.value = true;
+  error.value = "";
 
   try {
     books.value = await getBooks();
   } catch (e: any) {
-    error.value = e?.message || "Failed to load books";
+    error.value = e?.message || "Failed to load dashboard data.";
   } finally {
     loading.value = false;
   }
 }
 
-function openAddModal() {
-  error.value = "";
-  formError.value = "";
-  form.value = emptyForm();
-  showModal.value = true;
+function replaceBook(updated: Book) {
+  const index = books.value.findIndex((b) => b._id === updated._id);
+  if (index >= 0) {
+    books.value[index] = updated;
+  }
 }
 
-function closeModal() {
-  formError.value = "";
-  showModal.value = false;
+function isThisMonth(dateString?: string) {
+  if (!dateString) return false;
+
+  const date = new Date(dateString);
+  const now = new Date();
+
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth()
+  );
 }
 
-function validateForm(): boolean {
+function isThisYear(dateString?: string) {
+  if (!dateString) return false;
+
+  const date = new Date(dateString);
+  const now = new Date();
+
+  return date.getFullYear() === now.getFullYear();
+}
+
+const booksFinishedThisMonth = computed(
+  () =>
+    books.value.filter(
+      (book) => book.status === "finished" && isThisMonth(book.finishedAt),
+    ).length,
+);
+
+const booksFinishedThisYear = computed(
+  () =>
+    books.value.filter(
+      (book) => book.status === "finished" && isThisYear(book.finishedAt),
+    ).length,
+);
+
+const currentlyReading = computed(() =>
+  books.value.filter((book) => book.status === "currently-reading"),
+);
+
+const wantToRead = computed(() =>
+  books.value.filter((book) => book.status === "want-to-read"),
+);
+
+const recentlyFinished = computed(() =>
+  [...books.value]
+    .filter((book) => book.status === "finished" && book.finishedAt)
+    .sort(
+      (a, b) =>
+        new Date(b.finishedAt || "").getTime() -
+        new Date(a.finishedAt || "").getTime(),
+    )
+    .slice(0, 5),
+);
+
+const yearlyGoalPercent = computed(() => {
+  if (!yearlyGoal.value || yearlyGoal.value <= 0) return 0;
+  return Math.round((booksFinishedThisYear.value / yearlyGoal.value) * 100);
+});
+
+function validateForm() {
   formError.value = "";
 
-  const titleOk = form.value.title.trim().length > 0;
-  const authorOk = form.value.author.trim().length > 0;
-  const genreOk = form.value.genre.trim().length > 0;
-  const imageOk = form.value.image.trim().length > 0;
-  const yearOk =
-    Number.isFinite(form.value.publishedYear) && form.value.publishedYear > 0;
+  const missing: string[] = [];
 
-  if (!titleOk || !authorOk || !genreOk || !imageOk || !yearOk) {
-    const missing: string[] = [];
+  if (!form.value.title.trim()) missing.push("Title");
+  if (!form.value.author.trim()) missing.push("Author");
+  if (!form.value.coverImage.trim()) missing.push("Cover image");
+  if (!form.value.totalPages || form.value.totalPages < 1) {
+    missing.push("Total pages");
+  }
 
-    if (!titleOk) missing.push("Title");
-    if (!authorOk) missing.push("Author");
-    if (!genreOk) missing.push("Genre");
-    if (!imageOk) missing.push("Image URL");
-    if (!yearOk) missing.push("Year");
-
+  if (missing.length > 0) {
     formError.value = `Please fill in: ${missing.join(", ")}.`;
+    return false;
+  }
+
+  if ((form.value.currentPage ?? 0) > form.value.totalPages) {
+    formError.value = "Current page cannot be greater than total pages.";
     return false;
   }
 
   return true;
 }
 
+function openEditModal(book: Book) {
+  if (!book._id) return;
+
+  formError.value = "";
+  modalMode.value = "edit";
+  editingBookId.value = book._id;
+
+  form.value = {
+    title: book.title,
+    author: book.author,
+    coverImage: book.coverImage,
+    description: book.description ?? "",
+    totalPages: book.totalPages,
+    currentPage: book.currentPage ?? 0,
+    status: book.status,
+    targetDate: book.targetDate ?? "",
+    isFavorite: book.isFavorite ?? false,
+  };
+
+  showModal.value = true;
+}
+
+function closeModal() {
+  formError.value = "";
+  editingBookId.value = null;
+  showModal.value = false;
+}
+
 async function saveBook() {
-  error.value = "";
   formError.value = "";
 
-  if (!isLoggedIn()) {
-    error.value = "Please sign in to add a book.";
-    return;
-  }
-
   if (!validateForm()) return;
+  if (!editingBookId.value) return;
 
   loading.value = true;
 
   try {
-    form.value.inStock = (form.value.stockQuantity || 0) > 0;
-
-    const created = await createBook(form.value);
-    books.value.unshift(created);
-
+    const updated = await updateBook(editingBookId.value, form.value);
+    replaceBook(updated);
     closeModal();
   } catch (e: any) {
-    error.value = e?.message || "Could not save the book.";
+    formError.value = e?.message || "Could not save the book.";
   } finally {
     loading.value = false;
   }
 }
 
-const filteredBooks = computed(() => {
-  const q = query.value.trim().toLowerCase();
+async function handleDeleteBook(book: Book) {
+  if (!book._id) return;
 
-  if (!q) return books.value;
+  try {
+    await deleteBook(book._id);
+    books.value = books.value.filter((b) => b._id !== book._id);
+  } catch (e: any) {
+    error.value = e?.message || "Could not delete the book.";
+  }
+}
 
-  return books.value.filter((book) => {
-    const haystack = `${book.title ?? ""} ${book.author ?? ""} ${book.genre ?? ""}`.toLowerCase();
-    return haystack.includes(q);
-  });
-});
+async function handleCycleStatus(book: Book) {
+  if (!book._id) return;
 
-const countLabel = computed(() => {
-  const n = filteredBooks.value.length;
-  return `${n} book${n === 1 ? "" : "s"} in your library`;
-});
+  let nextStatus: ReadingStatus = "want-to-read";
+  let updateData: Partial<CreateBookInput> = {};
+
+  if (book.status === "want-to-read") {
+    nextStatus = "currently-reading";
+    updateData = {
+      status: nextStatus,
+      startedAt: new Date().toISOString(),
+      currentPage: book.currentPage ?? 0,
+    };
+  } else if (book.status === "currently-reading") {
+    nextStatus = "finished";
+    updateData = {
+      status: nextStatus,
+      currentPage: book.totalPages,
+      finishedAt: new Date().toISOString(),
+    };
+  } else {
+    nextStatus = "want-to-read";
+    updateData = {
+      status: nextStatus,
+      currentPage: 0,
+    };
+  }
+
+  try {
+    const updated = await updateBook(book._id, updateData);
+    replaceBook(updated);
+  } catch (e: any) {
+    error.value = e?.message || "Could not update book status.";
+  }
+}
+
+function openAddTimeModal(book: Book) {
+  selectedBookForTime.value = book;
+  minutesRead.value = 0;
+  pagesRead.value = 0;
+  addTimeError.value = "";
+  showAddTimeModal.value = true;
+}
+
+function closeAddTimeModal() {
+  selectedBookForTime.value = null;
+  minutesRead.value = 0;
+  pagesRead.value = 0;
+  addTimeError.value = "";
+  showAddTimeModal.value = false;
+}
+
+async function saveAddTime() {
+  const currentBook = selectedBookForTime.value;
+
+  if (!currentBook || !currentBook._id) return;
+
+  if (pagesRead.value < 0 || minutesRead.value < 0) {
+    addTimeError.value = "Values cannot be negative.";
+    return;
+  }
+
+  const nextPage = (currentBook.currentPage ?? 0) + pagesRead.value;
+  const clampedPage = Math.min(nextPage, currentBook.totalPages);
+
+  try {
+    const updated = await updateBook(currentBook._id, {
+      currentPage: clampedPage,
+      status:
+        clampedPage >= currentBook.totalPages
+          ? "finished"
+          : "currently-reading",
+      finishedAt:
+        clampedPage >= currentBook.totalPages
+          ? new Date().toISOString()
+          : undefined,
+    });
+
+    replaceBook(updated);
+    closeAddTimeModal();
+  } catch (e: any) {
+    addTimeError.value = e?.message || "Could not save reading session.";
+  }
+}
 
 onMounted(loadBooks);
 </script>
 
 <template>
-  <section class="page">
-    <header class="hero">
-      <h1 class="hero__title">Your Collection</h1>
-      <p class="hero__sub">
-        <span v-if="loading">Loading...</span>
-        <span v-else>{{ countLabel }}</span>
+  <AppShell>
+    <template #sidebar>
+      <AppSidebar />
+    </template>
+
+    <section class="dashboard">
+      <header class="hero">
+        <h1 class="hero__title">Your Reading Notebook</h1>
+        <p class="hero__subtitle">
+          Welcome back — here's your reading snapshot.
+        </p>
+      </header>
+
+      <p v-if="error" class="error" role="alert">
+        {{ error }}
       </p>
-    </header>
 
-    <div class="controls">
-      <div class="search">
-        <span class="search__icon" aria-hidden="true">🔎</span>
-        <input
-          v-model="query"
-          class="search__input"
-          type="text"
-          placeholder="Search by title, author, or genre..."
+      <section v-if="!loading" class="stats-grid">
+        <StatCard
+          label="Books this month"
+          :value="booksFinishedThisMonth"
+          :hint="`Goal: ${monthlyGoal}`"
         />
-      </div>
+        <StatCard
+          label="Books this year"
+          :value="booksFinishedThisYear"
+          :hint="`Goal: ${yearlyGoal}`"
+        />
+        <StatCard label="Currently reading" :value="currentlyReading.length" />
+        <StatCard label="Want to read" :value="wantToRead.length" />
+      </section>
 
-      <button class="btn btn--primary" type="button" @click="openAddModal">
-        ＋ Add Book
-      </button>
-    </div>
+      <section v-if="!loading" class="panel goal-panel">
+        <div class="section-head">
+          <h2 class="section-title">Yearly Reading Goal</h2>
+        </div>
 
-    <p v-if="error" class="error" role="alert">
-      {{ error }}
-    </p>
+        <div class="goal-copy">
+          <span class="goal-copy__value">{{ booksFinishedThisYear }}</span>
+          <span class="goal-copy__text">of {{ yearlyGoal }} books</span>
+        </div>
 
-    <div class="grid">
-      <BookCard
-        v-for="book in filteredBooks"
-        :key="book._id"
-        :book="book"
-        :saved="isSaved(book._id)"
-        @add-to-cart="addToCart"
-        @toggle-save="toggleSave"
+        <ProgressBar :value="booksFinishedThisYear" :max="yearlyGoal" />
+
+        <p class="goal-hint">{{ yearlyGoalPercent }}% complete</p>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="section-head">
+          <h2 class="section-title">Currently Reading</h2>
+        </div>
+
+        <div v-if="loading" class="empty-state">Loading books...</div>
+
+        <div v-else-if="currentlyReading.length" class="books-grid">
+          <BookCard
+            v-for="book in currentlyReading"
+            :key="book._id"
+            :book="book"
+            @delete-book="handleDeleteBook"
+            @edit-book="openEditModal"
+            @cycle-status="handleCycleStatus"
+            @add-time="openAddTimeModal"
+          />
+        </div>
+
+        <div v-else class="empty-state">
+          You do not have any books in progress yet.
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="section-head">
+          <h2 class="section-title">Recently Finished</h2>
+        </div>
+
+        <div v-if="loading" class="empty-state">Loading finished books...</div>
+
+        <div v-else-if="recentlyFinished.length" class="books-grid">
+          <BookCard
+            v-for="book in recentlyFinished"
+            :key="book._id"
+            :book="book"
+            @delete-book="handleDeleteBook"
+            @edit-book="openEditModal"
+            @cycle-status="handleCycleStatus"
+            @add-time="openAddTimeModal"
+          />
+        </div>
+
+        <div v-else class="empty-state">No finished books yet.</div>
+      </section>
+
+      <BookFormModal
+        v-model:open="showModal"
+        v-model="form"
+        :loading="loading"
+        :error="formError"
+        :mode="modalMode"
+        @submit="saveBook"
+        @close="closeModal"
       />
 
-      <div v-if="!loading && filteredBooks.length === 0" class="empty">
-        No books found.
-      </div>
-    </div>
-
-    <BookFormModal
-      v-model:open="showModal"
-      v-model="form"
-      mode="create"
-      :loading="loading"
-      :error="formError"
-      @submit="saveBook"
-      @close="closeModal"
-    />
-  </section>
+      <AddTimeModal
+        v-model:open="showAddTimeModal"
+        :loading="loading"
+        :error="addTimeError"
+        :book-title="selectedBookForTime?.title"
+        :minutes-read="minutesRead"
+        :pages-read="pagesRead"
+        @update:minutesRead="minutesRead = $event"
+        @update:pagesRead="pagesRead = $event"
+        @submit="saveAddTime"
+        @close="closeAddTimeModal"
+      />
+    </section>
+  </AppShell>
 </template>
 
 <style scoped>
-.page {
-  --ink: #1f2430;
-  --muted: rgba(31, 36, 48, 0.62);
-  --border: rgba(31, 36, 48, 0.12);
-  --accent: #e5971a;
-  --accentHover: #d88b12;
-  --danger: #b42318;
-
-  color: var(--ink);
+.dashboard {
+  display: grid;
+  gap: 28px;
 }
 
 .hero {
-  padding: 8px 0 18px;
+  display: grid;
+  gap: 8px;
 }
 
 .hero__title {
+  font-size: clamp(2.5rem, 4vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  font-family: ui-serif, Georgia, Cambria, serif;
+}
+
+.hero__subtitle {
   margin: 0;
-  font-size: 46px;
-  letter-spacing: -0.03em;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-}
-
-.hero__sub {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.controls {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  justify-content: space-between;
-  margin: 10px 0 18px;
-}
-
-.search {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 14px;
-  padding: 10px 12px;
-}
-
-.search__icon {
-  opacity: 0.7;
-  font-size: 14px;
-}
-
-.search__input {
-  width: 100%;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--ink);
-  font-size: 14px;
-}
-
-.btn {
-  height: 42px;
-  padding: 0 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: transparent;
-  font-weight: 800;
-  cursor: pointer;
-  color: var(--ink);
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.btn--primary {
-  background: var(--accent);
-  border-color: transparent;
-  color: white;
-}
-
-.btn--primary:hover {
-  background: var(--accentHover);
+  color: var(--text-soft);
+  font-size: 1rem;
 }
 
 .error {
-  margin: 0 0 14px;
-  color: var(--danger);
-  font-size: 13px;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  color: #b42318;
+  font-size: 0.92rem;
 }
 
-.grid {
+.stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.goal-panel {
+  padding: 22px 20px 18px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-title {
+  font-size: 1.9rem;
+  line-height: 1.1;
+  color: var(--text);
+  font-family: ui-serif, Georgia, Cambria, serif;
+  letter-spacing: -0.03em;
+}
+
+.goal-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 18px 0 14px;
+}
+
+.goal-copy__value {
+  font-size: 2.2rem;
+  line-height: 1;
+  color: var(--text);
+  font-weight: 700;
+  font-family: ui-serif, Georgia, Cambria, serif;
+}
+
+.goal-copy__text {
+  color: var(--text-soft);
+  font-size: 1rem;
+}
+
+.goal-hint {
+  margin: 10px 0 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.dashboard-section {
+  display: grid;
+  gap: 14px;
+}
+
+.books-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
   gap: 18px;
   align-items: start;
 }
 
-.empty {
-  grid-column: 1 / -1;
+.empty-state {
   padding: 22px;
   border-radius: 16px;
   border: 1px dashed var(--border);
-  color: var(--muted);
-}
-
-@media (max-width: 860px) {
-  .controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-</style>
-
-<style scoped>
-.page {
-  --bg: #f7f3ee;
-  --ink: #1f2430;
-  --muted: rgba(31, 36, 48, 0.62);
-  --border: rgba(31, 36, 48, 0.12);
-  --card: rgba(255, 255, 255, 0.55);
-  --accent: #e5971a;
-  --accentHover: #d88b12;
-  --danger: #b42318;
-
-  color: var(--ink);
-}
-
-.hero {
-  padding: 8px 0 18px;
-}
-
-.hero__title {
-  margin: 0;
-  font-size: 46px;
-  letter-spacing: -0.03em;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-}
-
-.hero__sub {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.controls {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  justify-content: space-between;
-  margin: 10px 0 18px;
-}
-
-.search {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.35);
-  border-radius: 14px;
-  padding: 10px 12px;
+  color: var(--text-soft);
 }
 
-.search__icon {
-  opacity: 0.7;
-  font-size: 14px;
-}
-
-.search__input {
-  width: 100%;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--ink);
-  font-size: 14px;
-}
-
-.btn {
-  height: 42px;
-  padding: 0 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: transparent;
-  font-weight: 800;
-  cursor: pointer;
-  color: var(--ink);
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.btn--primary {
-  background: var(--accent);
-  border-color: transparent;
-  color: white;
-}
-
-.btn--primary:hover {
-  background: var(--accentHover);
-}
-
-.error {
-  margin: 0 0 14px;
-  color: var(--danger);
-  font-size: 13px;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 18px;
-  align-items: start;
-}
-
-.empty {
-  grid-column: 1 / -1;
-  padding: 22px;
-  border-radius: 16px;
-  border: 1px dashed var(--border);
-  color: var(--muted);
-}
-
-@media (max-width: 860px) {
-  .controls {
-    flex-direction: column;
-    align-items: stretch;
+@media (max-width: 1100px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .books-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .dashboard {
+    gap: 22px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-title {
+    font-size: 1.55rem;
   }
 }
 </style>

@@ -1,372 +1,225 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from "vue";
-import type { Book } from "../services/books";
+import { computed } from "vue";
+import { PhX } from "@phosphor-icons/vue";
+import type { CreateBookInput, ReadingStatus } from "../services/books";
 
-const props = defineProps<{
-  open: boolean;
-  mode: "create" | "edit";
-  loading?: boolean;
-  error?: string;
-  modelValue: Book;
-}>();
+const open = defineModel<boolean>("open", { default: false });
 
-const emit = defineEmits<{
-  (e: "update:open", v: boolean): void;
-  (e: "update:modelValue", v: Book): void;
+const model = defineModel<CreateBookInput>({
+  default: () => ({
+    title: "",
+    author: "",
+    coverImage: "",
+    description: "",
+    totalPages: 1,
+    currentPage: 0,
+    status: "want-to-read",
+    targetDate: "",
+    isFavorite: false,
+  }),
+});
+
+const props = withDefaults(
+  defineProps<{
+    loading?: boolean;
+    error?: string;
+    mode?: "add" | "edit";
+  }>(),
+  {
+    mode: "add",
+  }
+);
+
+defineEmits<{
   (e: "submit"): void;
   (e: "close"): void;
 }>();
 
-const title = computed(() =>
-  props.mode === "create" ? "Add book" : "Edit book"
+const statusOptions: { value: ReadingStatus; label: string }[] = [
+  { value: "want-to-read", label: "Want to Read" },
+  { value: "currently-reading", label: "Currently Reading" },
+  { value: "finished", label: "Finished" },
+];
+
+const modalTitle = computed(() =>
+  props.mode === "edit" ? "Edit Book" : "Add a New Book"
 );
 
 const submitLabel = computed(() =>
-  props.mode === "create" ? "Add book" : "Save changes"
+  props.mode === "edit" ? "Save Changes" : "Add Book"
 );
-
-const draft = reactive<Book>({
-  ...props.modelValue,
-  stockQuantity: props.modelValue.stockQuantity ?? 0,
-});
-
-watch(
-  () => props.modelValue,
-  (v) => Object.assign(draft, v),
-  { deep: true, immediate: true }
-);
-
-watch(
-  () => draft,
-  () => {
-    draft.inStock = (draft.stockQuantity || 0) > 0;
-    emit("update:modelValue", { ...draft });
-  },
-  { deep: true }
-);
-
-const stockStatus = computed(() =>
-  (draft.stockQuantity || 0) > 0 ? "In stock" : "Out of stock"
-);
-
-function close() {
-  emit("update:open", false);
-  emit("close");
-}
-
-function onBackdrop(e: MouseEvent) {
-  if (e.target === e.currentTarget) close();
-}
 </script>
 
 <template>
-  <div v-if="open" class="modal" @click="onBackdrop">
-    <div class="modal__panel" role="dialog" aria-modal="true" :aria-label="title">
-      <div class="modal__head">
-        <h2 class="modal__title">{{ title }}</h2>
-        <button class="iconBtn" type="button" @click="close" aria-label="Close">✕</button>
+  <div v-if="open" class="overlay" @click.self="$emit('close')">
+    <div class="modal" role="dialog" aria-modal="true" :aria-label="modalTitle">
+      <div class="modal__header">
+        <h2 class="modal__title">{{ modalTitle }}</h2>
+
+        <button
+          class="close-btn"
+          type="button"
+          @click="$emit('close')"
+          aria-label="Close modal"
+        >
+          <PhX :size="24" weight="regular" />
+        </button>
       </div>
 
-      <p v-if="error" class="formError" role="alert">{{ error }}</p>
-
-      <form class="layout" @submit.prevent="emit('submit')">
-        <aside class="previewCard">
-          <div class="coverWrap">
-            <img
-              v-if="draft.image"
-              :src="draft.image"
-              :alt="draft.title || 'Book cover'"
-              class="cover"
+      <div class="modal__body">
+        <div class="form-grid">
+          <label class="field">
+            <span class="field__label">Title</span>
+            <input
+              v-model="model.title"
+              type="text"
+              placeholder="Enter book title"
             />
-            <div v-else class="coverPlaceholder">No image</div>
-          </div>
+          </label>
 
-          <div class="previewInfo">
-            <h3 class="previewTitle">{{ draft.title || "Untitled book" }}</h3>
-            <p class="previewAuthor">{{ draft.author || "Unknown author" }}</p>
+          <label class="field">
+            <span class="field__label">Author</span>
+            <input
+              v-model="model.author"
+              type="text"
+              placeholder="Enter author name"
+            />
+          </label>
 
-            <div class="metaList">
-              <div class="metaItem">
-                <span class="metaLabel">Genre</span>
-                <span class="metaValue">{{ draft.genre || "—" }}</span>
-              </div>
+          <label class="field">
+            <span class="field__label">Cover image URL</span>
+            <input
+              v-model="model.coverImage"
+              type="text"
+              placeholder="Paste image URL..."
+            />
+          </label>
 
-              <div class="metaItem">
-                <span class="metaLabel">Year</span>
-                <span class="metaValue">{{ draft.publishedYear || "—" }}</span>
-              </div>
-
-              <div class="metaItem">
-                <span class="metaLabel">Price</span>
-                <span class="metaValue">${{ Number(draft.price || 0).toFixed(2) }}</span>
-              </div>
-
-              <div class="metaItem">
-                <span class="metaLabel">Stock</span>
-                <span class="metaValue">{{ draft.stockQuantity || 0 }} pcs</span>
-              </div>
-            </div>
-
-            <span
-              :class="[
-                'stockBadge',
-                (draft.stockQuantity || 0) > 0 ? 'stockBadge--success' : 'stockBadge--danger'
-              ]"
-            >
-              {{ stockStatus }}
-            </span>
-          </div>
-        </aside>
-
-        <section class="formCard">
-          <div class="formGrid">
-            <div class="field field--full">
-              <label class="label">Title</label>
-              <input class="input" v-model.trim="draft.title" required />
-            </div>
-
-            <div class="field field--full">
-              <label class="label">Author</label>
-              <input class="input" v-model.trim="draft.author" required />
-            </div>
-
-            <div class="field field--full">
-              <label class="label">Image URL</label>
+          <div class="form-row">
+            <label class="field">
+              <span class="field__label">Total Pages</span>
               <input
-                class="input"
-                v-model.trim="draft.image"
-                placeholder="Paste image URL"
-                required
+                v-model.number="model.totalPages"
+                type="number"
+                min="1"
+                placeholder="e.g. 350"
               />
-            </div>
+            </label>
 
-            <div class="field">
-              <label class="label">Genre</label>
-              <input class="input" v-model.trim="draft.genre" placeholder="Fiction" />
-            </div>
-
-            <div class="field">
-              <label class="label">Year</label>
-              <input class="input" type="number" v-model.number="draft.publishedYear" />
-            </div>
-
-            <div class="field">
-              <label class="label">Price</label>
-              <input class="input" type="number" step="0.01" min="0" v-model.number="draft.price" />
-            </div>
-
-            <div class="field">
-              <label class="label">Stock quantity</label>
-              <input class="input" type="number" min="0" v-model.number="draft.stockQuantity" />
-            </div>
-
-            <div class="field field--full">
-              <label class="label">Description</label>
-              <textarea
-                class="textarea"
-                v-model.trim="draft.description"
-                placeholder="Write a short description..."
-              ></textarea>
-            </div>
+            <label class="field">
+              <span class="field__label">Status</span>
+              <select v-model="model.status">
+                <option
+                  v-for="option in statusOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
           </div>
 
-          <div class="actions">
-            <button class="btn btn--ghost" type="button" @click="close">Cancel</button>
-            <button class="btn btn--primary" :disabled="loading" type="submit">
-              {{ loading ? "Saving..." : submitLabel }}
-            </button>
-          </div>
-        </section>
-      </form>
+          <label class="field">
+            <span class="field__label">
+              Deadline
+              <span class="field__hint">(optional)</span>
+            </span>
+            <input v-model="model.targetDate" type="date" />
+          </label>
+        </div>
+
+        <p v-if="props.error" class="error" role="alert">
+          {{ props.error }}
+        </p>
+      </div>
+
+      <div class="modal__footer">
+        <button class="btn btn--ghost" type="button" @click="$emit('close')">
+          Cancel
+        </button>
+
+        <button
+          class="btn btn--primary"
+          type="button"
+          :disabled="props.loading"
+          @click="$emit('submit')"
+        >
+          {{ props.loading ? "Saving..." : submitLabel }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.formError {
-  margin: 0 0 14px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(180, 35, 24, 0.18);
-  background: #fff1f0;
-  color: #b42318;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.modal {
+.overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.48);
-  backdrop-filter: blur(5px);
+  z-index: 100;
   display: grid;
   place-items: center;
   padding: 24px;
-  z-index: 1000;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(4px);
 }
 
-.modal__panel {
-  width: min(980px, 96vw);
-  max-height: 92vh;
-  overflow: auto;
+.modal {
+  width: min(720px, 100%);
   background: #fcfaf7;
-  border: 1px solid rgba(31, 36, 48, 0.08);
   border-radius: 28px;
-  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.22);
-  padding: 24px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
 }
 
-.modal__head {
+.modal__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  padding: 28px 28px 8px;
 }
 
 .modal__title {
   margin: 0;
-  font-size: 2rem;
-  line-height: 1.1;
+  line-height: 1.02;
   color: #1f2430;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-family: ui-serif, Georgia, Cambria, serif;
+  letter-spacing: -0.04em;
 }
 
-.iconBtn {
-  height: 44px;
-  width: 44px;
-  border-radius: 14px;
-  border: 1px solid rgba(31, 36, 48, 0.1);
-  background: white;
+.close-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #667085;
   cursor: pointer;
-  font-size: 1rem;
-  color: #344054;
-  transition: 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
   flex-shrink: 0;
 }
 
-.iconBtn:hover {
-  background: #f8fafc;
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 22px;
-  align-items: start;
-}
-
-.previewCard {
-  background: linear-gradient(180deg, #f8f4ee 0%, #f3ede4 100%);
-  border: 1px solid rgba(31, 36, 48, 0.08);
-  border-radius: 22px;
-  padding: 18px;
-  position: sticky;
-  top: 0;
-}
-
-.coverWrap {
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  border-radius: 18px;
-  overflow: hidden;
-  background: #ece7df;
-  margin-bottom: 16px;
-}
-
-.cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.coverPlaceholder {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  color: #667085;
-  font-weight: 700;
-}
-
-.previewInfo {
-  display: grid;
-  gap: 12px;
-}
-
-.previewTitle {
-  margin: 0;
-  font-size: 1.2rem;
-  line-height: 1.3;
+.close-btn:hover {
+  background: rgba(31, 36, 48, 0.05);
   color: #1f2430;
-  font-weight: 800;
 }
 
-.previewAuthor {
-  margin: 0;
-  color: #667085;
-  font-size: 0.95rem;
+.modal__body {
+  padding: 14px 28px 10px;
 }
 
-.metaList {
+.form-grid {
   display: grid;
-  gap: 10px;
+  gap: 18px;
 }
 
-.metaItem {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(31, 36, 48, 0.08);
-}
-
-.metaLabel {
-  color: #667085;
-  font-size: 0.85rem;
-}
-
-.metaValue {
-  color: #1f2430;
-  font-size: 0.9rem;
-  font-weight: 700;
-  text-align: right;
-}
-
-.stockBadge {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  padding: 0.42rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-
-.stockBadge--success {
-  background: #ecfdf3;
-  color: #027a48;
-  border: 1px solid #abefc6;
-}
-
-.stockBadge--danger {
-  background: #fef3f2;
-  color: #b42318;
-  border: 1px solid #fecdca;
-}
-
-.formCard {
-  background: white;
-  border: 1px solid rgba(31, 36, 48, 0.08);
-  border-radius: 22px;
-  padding: 20px;
-}
-
-.formGrid {
+.form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 20px;
 }
 
 .field {
@@ -374,137 +227,123 @@ function onBackdrop(e: MouseEvent) {
   gap: 8px;
 }
 
-.field--full {
-  grid-column: 1 / -1;
-}
-
-.label {
-  font-size: 0.82rem;
-  font-weight: 700;
+.field__label {
+  font-size: 0.95rem;
+  font-weight: 600;
   color: #344054;
 }
 
-.input,
-.textarea {
+.field__hint {
+  font-weight: 400;
+  color: #98a2b3;
+  margin-left: 4px;
+}
+
+input,
+select {
   width: 100%;
-  border-radius: 14px;
-  border: 1px solid #d8dadd;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(31, 36, 48, 0.12);
+  border-radius: 16px;
   background: #fff;
-  padding: 12px 14px;
-  outline: none;
-  font-size: 0.95rem;
+  padding: 15px 18px;
+  font: inherit;
+  font-size: 1rem;
   color: #1f2430;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.input:focus,
-.textarea:focus {
-  border-color: #e5971a;
-  box-shadow: 0 0 0 4px rgba(229, 151, 26, 0.12);
+input::placeholder {
+  color: #98a2b3;
 }
 
-.textarea {
-  min-height: 180px;
-  resize: vertical;
-  line-height: 1.5;
+input:focus,
+select:focus {
+  border-color: rgba(126, 151, 118, 0.65);
+  box-shadow: 0 0 0 4px rgba(126, 151, 118, 0.12);
 }
 
-.actions {
+.error {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  color: #b42318;
+  font-size: 0.92rem;
+}
+
+.modal__footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 18px;
+  gap: 14px;
+  padding: 18px 28px 28px;
 }
 
 .btn {
-  height: 46px;
-  padding: 0 18px;
+  min-width: 120px;
+  height: 52px;
+  padding: 0 22px;
   border-radius: 16px;
-  border: 1px solid rgba(31, 36, 48, 0.1);
-  background: white;
-  font-weight: 800;
+  border: 1px solid rgba(31, 36, 48, 0.12);
   font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
-  color: #1f2430;
-  transition: 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.btn--ghost {
+  background: #fff;
+  color: #344054;
 }
 
 .btn--ghost:hover {
-  background: #f8fafc;
+  background: #f7f4ef;
 }
 
 .btn--primary {
-  background: #e5971a;
-  color: white;
+  background: #8aa17f;
+  color: #fff;
   border-color: transparent;
-  box-shadow: 0 10px 24px rgba(229, 151, 26, 0.22);
 }
 
 .btn--primary:hover {
-  background: #d8890d;
+  background: #7a9270;
 }
 
-.btn:disabled {
+.btn--primary:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.formCard {
-  background: white;
-  border: 1px solid rgba(31, 36, 48, 0.08);
-  border-radius: 22px;
-  padding: 24px;
-  box-sizing: border-box;
-}
-
-.input,
-.textarea {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.formGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  padding-top: 6px;
-}
-
-.field--full {
-  grid-column: 1 / -1;
-}
-
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-
-  .previewCard {
-    position: static;
-  }
-}
-
 @media (max-width: 700px) {
-  .modal {
+  .overlay {
     padding: 12px;
   }
 
-  .modal__panel {
-    padding: 16px;
-    border-radius: 20px;
+  .modal {
+    width: 100%;
+    border-radius: 22px;
   }
 
-  .modal__title {
-    font-size: 1.55rem;
+  .modal__header {
+    padding: 22px 18px 8px;
   }
 
-  .formGrid {
-    grid-template-columns: 1fr;
+  .modal__body {
+    padding: 12px 18px 10px;
   }
 
-  .actions {
+  .modal__footer {
+    padding: 16px 18px 18px;
     flex-direction: column-reverse;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 18px;
   }
 
   .btn {
