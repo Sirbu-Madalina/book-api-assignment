@@ -16,8 +16,9 @@
     "forceConsistentCasingInFileNames": false,
     "strict": true,
     "noImplicitAny": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"]
   },
-  "include": ["./src"],
+  "include": ["./src", "./playwright.config.ts", "./tests"],
   "exclude": ["node_modules/**/*"]
 }
