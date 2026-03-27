@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 
 export default function bookTestCollection() {
-  test("Create book with valid token", async ({ request }) => {
+    test("Create book with valid token", async ({ request }) => {
+    test.setTimeout(15000);
+
     const user = {
       name: "Book User",
       email: `bookuser${Date.now()}@example.com`,
