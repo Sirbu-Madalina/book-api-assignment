@@ -36,5 +36,5 @@ jobs:
         env:
           NODE_ENV: test
           DBHOST: ${{ secrets.DBHOST }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          TOKEN_SECRET: ${{ secrets.TOKEN_SECRET }}
           PORT: 4000
