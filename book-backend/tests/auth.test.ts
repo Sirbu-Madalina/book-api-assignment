@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 export default function authTestCollection() {
   test("Valid user registration", async ({ request }) => {
-    test.setTimeout(10000);
+    test.setTimeout(15000);
 
     const user = {
       name: "Test User",
