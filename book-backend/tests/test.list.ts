@@ -5,6 +5,7 @@ import { test } from "@playwright/test";
 // import test cases
 import health from "./health.test";
 import authTestCollection from "./auth.test";
+import bookTestCollection from "./book.test";
 
 import dotenvFlow from "dotenv-flow";
 dotenvFlow.config();
@@ -28,3 +29,4 @@ setup();
 
 test.describe(health);
 test.describe(authTestCollection);
+test.describe(bookTestCollection);
