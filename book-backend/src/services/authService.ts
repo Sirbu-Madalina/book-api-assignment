@@ -19,8 +19,10 @@ export type LoginInput = {
 // Creates a user and returns the saved document
 export async function registerUserService(input: RegisterInput) {
   try {
+    //it connects to the database
     await connect();
 
+    // checks if a user with the same email already exists
     const emailExists = await userModel.findOne({ email: input.email });
     if (emailExists) {
       // Attach HTTP status
@@ -32,13 +34,15 @@ export async function registerUserService(input: RegisterInput) {
     // Hash password before persisting user data
     const salt = await bcrypt.genSalt(10);
     const passwordHashed = await bcrypt.hash(input.password, salt);
-
+    
+    //new user is created
     const userObject = new userModel({
       name: input.name,
       email: input.email,
       password: passwordHashed,
     });
 
+    //user is saved to the database
     const savedUser = await userObject.save();
     return savedUser;
   } finally {

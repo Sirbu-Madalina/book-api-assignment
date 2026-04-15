@@ -9,6 +9,7 @@ dotenvFlow.config();
 
 const app: Application = express();
 
+// allows my frontend to communicate with the backend
 function setupCors() {
   app.use(
     cors({
