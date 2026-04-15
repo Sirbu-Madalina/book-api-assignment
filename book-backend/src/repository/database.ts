@@ -12,7 +12,6 @@ export async function testConnection() {
   }
 }
 
-
 //Connect to the database
 export async function connect() {
   try {

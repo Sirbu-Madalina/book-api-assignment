@@ -25,14 +25,14 @@
   "author": "",
   "type": "commonjs",
   "main": "index.js",
-  "scripts": {
-    "build": "rimraf dist && tsc",
-    "start": "node dist/index.js",
-    "start:server": "node dist/app.js",
-    "dev": "nodemon src/index.ts",
-    "testdb": "cross-env NODE_ENV=test nodemon src/index.ts",
-    "test": "npx playwright test --reporter=list"
-  },
+"scripts": {
+  "build": "rimraf dist && tsc",
+  "start": "node dist/index.js",
+  "start:server": "node dist/app.js",
+  "dev": "cross-env NODE_ENV=development nodemon src/index.ts",
+  "testdb": "cross-env NODE_ENV=test ts-node src/index.ts",
+  "test": "npx playwright test --reporter=list"
+},
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",

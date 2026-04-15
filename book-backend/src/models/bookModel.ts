@@ -22,7 +22,6 @@ const bookSchema = new Schema<Book>(
     startedAt: { type: Date },
     finishedAt: { type: Date },
     targetDate: { type: Date },
-
     isFavorite: { type: Boolean, default: false },
 
     userId: {

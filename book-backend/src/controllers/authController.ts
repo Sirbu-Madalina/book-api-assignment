@@ -1,5 +1,4 @@
 //controllers now do only validation, HTTP response, calling service
-
 import { type Request, type Response, type NextFunction } from "express";
 import Joi, { ValidationResult } from "joi";
 import { User } from "../interfaces/user";
@@ -43,11 +42,13 @@ export async function registerUser(req: Request, res: Response) {
   // validate
   const { error } = validateUserRegistrationInfo(req.body);
   if (error) {
+    // If validation fails, it returns a 400 Bad Request with the validation error message.
     res.status(400).json({ error: error.details[0].message });
     return;
   }
 
   try {
+    // If the input is valid, the controller calls the service layer to create the user.
     const savedUser = await authService.registerUserService(req.body);
     res.status(201).json({ error: null, data: savedUser._id });
   } catch (err: any) {
@@ -79,7 +80,7 @@ export async function loginUser(req: Request, res: Response) {
   }
 }
 
-// validate registration
+// This function validates the registration input using Joi.
 export function validateUserRegistrationInfo(data: User): ValidationResult {
   const schema = Joi.object({
     name: Joi.string().min(2).max(255).required(),
@@ -90,7 +91,7 @@ export function validateUserRegistrationInfo(data: User): ValidationResult {
   return schema.validate(data);
 }
 
-// validate login
+// validate login input
 export function validateUserLoginInfo(data: User): ValidationResult {
   const schema = Joi.object({
     email: Joi.string().email().min(6).max(255).required(),
