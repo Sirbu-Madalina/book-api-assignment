@@ -13,6 +13,7 @@ import {
 } from "../services/books";
 import { isLoggedIn } from "../services/auth";
 import AddTimeModal from "../components/AddTimeModal.vue";
+import { createReadingSession } from "../services/sessions";
 
 const books = ref<Book[]>([]);
 const loading = ref(false);
@@ -29,6 +30,7 @@ const selectedBookForTime = ref<Book | null>(null);
 
 const minutesRead = ref(0);
 const pagesRead = ref(0);
+const sessionNote = ref("");
 
 const form = ref<CreateBookInput>(emptyForm());
 const modalMode = ref<"add" | "edit">("add");
@@ -225,6 +227,7 @@ function openAddTimeModal(book: Book) {
   selectedBookForTime.value = book;
   minutesRead.value = 0;
   pagesRead.value = 0;
+  sessionNote.value = "";
   addTimeError.value = "";
   showAddTimeModal.value = true;
 }
@@ -233,6 +236,7 @@ function closeAddTimeModal() {
   selectedBookForTime.value = null;
   minutesRead.value = 0;
   pagesRead.value = 0;
+  sessionNote.value = "";
   addTimeError.value = "";
   showAddTimeModal.value = false;
 }
@@ -247,23 +251,15 @@ async function saveAddTime() {
     return;
   }
 
-  const nextPage = (currentBook.currentPage ?? 0) + pagesRead.value;
-  const clampedPage = Math.min(nextPage, currentBook.totalPages);
-
   try {
-    const updated = await updateBook(currentBook._id, {
-      currentPage: clampedPage,
-      status:
-        clampedPage >= currentBook.totalPages
-          ? "finished"
-          : "currently-reading",
-      finishedAt:
-        clampedPage >= currentBook.totalPages
-          ? new Date().toISOString()
-          : undefined,
+    const result = await createReadingSession({
+      bookId: currentBook._id,
+      minutesRead: minutesRead.value,
+      pagesRead: pagesRead.value,
+      note: sessionNote.value.trim(),
     });
 
-    replaceBook(updated);
+    replaceBook(result.book);
     closeAddTimeModal();
   } catch (e: any) {
     addTimeError.value = e?.message || "Could not save reading session.";
@@ -370,8 +366,10 @@ onMounted(loadBooks);
         :book-title="selectedBookForTime?.title"
         :minutes-read="minutesRead"
         :pages-read="pagesRead"
+        :note="sessionNote"
         @update:minutesRead="minutesRead = $event"
         @update:pagesRead="pagesRead = $event"
+        @update:note="sessionNote = $event"
         @submit="saveAddTime"
         @close="closeAddTimeModal"
       />

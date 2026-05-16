@@ -7,6 +7,7 @@ const props = defineProps<{
   bookTitle?: string;
   minutesRead: number;
   pagesRead: number;
+  note: string;
 }>();
 
 const emit = defineEmits<{
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   (e: "submit"): void;
   (e: "update:minutesRead", value: number): void;
   (e: "update:pagesRead", value: number): void;
+  (e: "update:note", value: string): void;
 }>();
 </script>
 
@@ -23,9 +25,7 @@ const emit = defineEmits<{
       <div class="modal__header">
         <div>
           <h2 class="modal__title">Add Reading Time</h2>
-          <p class="modal__subtitle" v-if="bookTitle">
-            {{ bookTitle }}
-          </p>
+          <p class="modal__subtitle">Save a session for this book.</p>
         </div>
 
         <button class="close-btn" type="button" @click="$emit('close')">
@@ -35,6 +35,16 @@ const emit = defineEmits<{
 
       <div class="modal__body">
         <div class="form-grid">
+          <label class="field">
+            <span class="field__label">Book</span>
+            <input
+              :value="bookTitle"
+              type="text"
+              disabled
+              placeholder="Selected book"
+            />
+          </label>
+
           <label class="field">
             <span class="field__label">Minutes read</span>
             <input
@@ -54,6 +64,16 @@ const emit = defineEmits<{
               min="0"
               placeholder="e.g. 12"
               @input="$emit('update:pagesRead', Number(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Note</span>
+            <input
+              :value="note"
+              type="text"
+              placeholder="Optional note"
+              @input="$emit('update:note', ($event.target as HTMLInputElement).value)"
             />
           </label>
         </div>
@@ -157,6 +177,12 @@ input {
   color: #1f2430;
   outline: none;
   box-sizing: border-box;
+}
+
+input:disabled {
+  color: #667085;
+  background: #f6f4f1;
+  cursor: not-allowed;
 }
 
 .error {

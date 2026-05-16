@@ -7,6 +7,18 @@ import {
   deleteBookById,
 } from "./controllers/bookController";
 import { registerUser, loginUser, verifyToken } from "./controllers/authController";
+import {
+  createReadingSession,
+  getReadingSessions,
+  updateReadingSession,
+  deleteReadingSession,
+} from "./controllers/readingSessionController";
+import {
+  createBookshelf,
+  getBookshelves,
+  updateBookshelf,
+  deleteBookshelf,
+} from "./controllers/bookshelfController";
 
 const router: Router = Router();
 
@@ -207,5 +219,17 @@ router.get("/books", verifyToken, getAllBooks);
 router.get("/books/:id", verifyToken, getBookById);
 router.put("/books/:id", verifyToken, updateBookById);
 router.delete("/books/:id", verifyToken, deleteBookById);
+
+// Reading session routes
+router.post("/sessions", verifyToken, createReadingSession);
+router.get("/sessions", verifyToken, getReadingSessions);
+router.put("/sessions/:id", verifyToken, updateReadingSession);
+router.delete("/sessions/:id", verifyToken, deleteReadingSession);
+
+// Bookshelf routes
+router.post("/bookshelves", verifyToken, createBookshelf);
+router.get("/bookshelves", verifyToken, getBookshelves);
+router.put("/bookshelves/:id", verifyToken, updateBookshelf);
+router.delete("/bookshelves/:id", verifyToken, deleteBookshelf);
 
 export default router;

@@ -15,6 +15,15 @@ export async function testConnection() {
 //Connect to the database
 export async function connect() {
   try {
+    if (mongoose.connection.readyState === 1) {
+      return;
+    }
+
+    if (mongoose.connection.readyState === 2) {
+      await mongoose.connection.asPromise();
+      return;
+    }
+
     if (!process.env.DBHOST) {
       throw new Error('DBHOST environment variable is not defined');
     }
@@ -31,6 +40,7 @@ export async function connect() {
   }
   catch (error) {
     console.log('Error connecting to the database. Error: ' + error);
+    throw error;
   }
 }
 
