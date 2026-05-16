@@ -16,7 +16,14 @@ import {
 const router = useRouter();
 const route = useRoute();
 
-const menu = [
+type MenuItem = {
+  label: string;
+  path: string;
+  icon: any;
+  disabled?: boolean;
+};
+
+const menu: MenuItem[] = [
   { label: "Dashboard", path: "/", icon: PhSquaresFour },
   { label: "My Library", path: "/library", icon: PhBooks },
   { label: "Goals", path: "/goals", icon: PhTarget },
@@ -24,13 +31,11 @@ const menu = [
     label: "Sessions",
     path: "/sessions",
     icon: PhTimer,
-    disabled: true,
   },
   {
     label: "Bookshelves",
     path: "/bookshelves",
     icon: PhBookmarkSimple,
-    disabled: true,
   },
 ];
 

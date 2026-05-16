@@ -1,5 +1,5 @@
 import { bookModel } from "../models/bookModel";
-import { connect, disconnect } from "../repository/database";
+import { connect } from "../repository/database";
 
 export type CreateBookInput = {
   title: string;
@@ -17,60 +17,40 @@ export type CreateBookInput = {
 };
 
 export async function createBookService(data: CreateBookInput, userId: string) {
-  try {
-    await connect();
+  await connect();
 
-    const book = new bookModel({
-      ...data,
-      userId,
-    });
+  const book = new bookModel({
+    ...data,
+    userId,
+  });
 
-    return await book.save();
-  } finally {
-    await disconnect();
-  }
+  return await book.save();
 }
 
 export async function getAllBooksService(userId: string) {
-  try {
-    await connect();
-    return await bookModel.find({ userId }).sort({ createdAt: -1 });
-  } finally {
-    await disconnect();
-  }
+  await connect();
+  return await bookModel.find({ userId }).sort({ createdAt: -1 });
 }
 
 export async function getBookByIdService(id: string, userId: string) {
-  try {
-    await connect();
-    return await bookModel.findOne({ _id: id, userId });
-  } finally {
-    await disconnect();
-  }
+  await connect();
+  return await bookModel.findOne({ _id: id, userId });
 }
 
 export async function updateBookByIdService(id: string, data: Partial<CreateBookInput>, userId: string) {
-  try {
-    await connect();
+  await connect();
 
-    return await bookModel.findOneAndUpdate(
-      { _id: id, userId },
-      data,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-  } finally {
-    await disconnect();
-  }
+  return await bookModel.findOneAndUpdate(
+    { _id: id, userId },
+    data,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 }
 
 export async function deleteBookByIdService(id: string, userId: string) {
-  try {
-    await connect();
-    return await bookModel.findOneAndDelete({ _id: id, userId });
-  } finally {
-    await disconnect();
-  }
+  await connect();
+  return await bookModel.findOneAndDelete({ _id: id, userId });
 }

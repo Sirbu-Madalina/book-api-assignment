@@ -5,6 +5,8 @@ import { isLoggedIn } from "./services/auth";
 import FavoritesView from "./views/FavoritesView.vue";
 import MyLibraryView from "./views/MyLibraryView.vue";
 import GoalsView from "./views/GoalsView.vue";
+import SessionsView from "./views/SessionsView.vue";
+import BookshelvesView from "./views/BookshelvesView.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -28,6 +30,16 @@ export const router = createRouter({
       path: "/goals",
       name: "goals",
       component: GoalsView,
+    },
+    {
+      path: "/sessions",
+      name: "sessions",
+      component: SessionsView,
+    },
+    {
+      path: "/bookshelves",
+      name: "bookshelves",
+      component: BookshelvesView,
     },
   ],
 });
