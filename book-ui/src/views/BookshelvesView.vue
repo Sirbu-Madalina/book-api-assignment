@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 import {
-  PhBookmarkSimple,
+  PhCaretLeft,
+  PhCaretRight,
   PhPencilSimple,
   PhPlus,
   PhTrash,
-  PhX,
 } from "@phosphor-icons/vue";
 
 import AppShell from "../components/layout/AppShell.vue";
 import AppSidebar from "../components/layout/AppSidebar.vue";
+import BookshelfFormModal from "../components/BookshelfFormModal.vue";
 import { getBooks, type Book } from "../services/books";
 import {
   createBookshelf,
@@ -25,21 +26,12 @@ const loading = ref(false);
 const saving = ref(false);
 const error = ref("");
 const formError = ref("");
+const showShelfModal = ref(false);
 
 const shelfName = ref("");
 const shelfDescription = ref("");
 const selectedBookIds = ref<string[]>([]);
 const editingShelfId = ref<string | null>(null);
-
-const totalBooksShelved = computed(() => {
-  const ids = new Set<string>();
-  shelves.value.forEach((shelf) => {
-    shelf.bookIds.forEach((book) => {
-      if (book._id) ids.add(book._id);
-    });
-  });
-  return ids.size;
-});
 
 async function loadBookshelvesPage() {
   loading.value = true;
@@ -79,6 +71,16 @@ function resetForm() {
   formError.value = "";
 }
 
+function openShelfModal() {
+  resetForm();
+  showShelfModal.value = true;
+}
+
+function closeShelfModal() {
+  resetForm();
+  showShelfModal.value = false;
+}
+
 function startEditShelf(shelf: Bookshelf) {
   if (!shelf._id) return;
 
@@ -89,6 +91,7 @@ function startEditShelf(shelf: Bookshelf) {
     .map((book) => book._id)
     .filter((id): id is string => !!id);
   formError.value = "";
+  showShelfModal.value = true;
 }
 
 function replaceShelf(updated: Bookshelf) {
@@ -97,6 +100,20 @@ function replaceShelf(updated: Bookshelf) {
   if (index >= 0) {
     shelves.value[index] = updated;
   }
+}
+
+function shelfRailId(shelf: Bookshelf) {
+  return `shelf-rail-${shelf._id ?? shelf.name.replace(/\W+/g, "-")}`;
+}
+
+function scrollShelf(shelf: Bookshelf, direction: "left" | "right") {
+  const rail = document.getElementById(shelfRailId(shelf));
+  if (!rail) return;
+
+  rail.scrollBy({
+    left: direction === "left" ? -rail.clientWidth : rail.clientWidth,
+    behavior: "smooth",
+  });
 }
 
 async function saveShelf() {
@@ -126,6 +143,7 @@ async function saveShelf() {
     }
 
     resetForm();
+    showShelfModal.value = false;
   } catch (e: any) {
     formError.value = e?.message || "Could not save bookshelf.";
   } finally {
@@ -157,14 +175,14 @@ onMounted(loadBookshelvesPage);
       <AppSidebar />
     </template>
 
-    <section class="bookshelves-page">
-      <header class="hero">
-        <div>
-          <h1 class="hero__title">Bookshelves</h1>
-          <p class="hero__subtitle">
-            Create custom categories and choose which books belong there.
-          </p>
-        </div>
+    <section class="bookshelf-page">
+      <header class="page-header">
+        <h1 class="page-title">Book Shelf</h1>
+
+        <button class="add-shelf-btn" type="button" :disabled="!books.length" @click="openShelfModal">
+          <PhPlus :size="18" weight="bold" />
+          Add shelf
+        </button>
       </header>
 
       <p v-if="error" class="error" role="alert">
@@ -174,473 +192,302 @@ onMounted(loadBookshelvesPage);
       <div v-if="loading" class="empty-state">Loading bookshelves...</div>
 
       <template v-else>
-        <section class="stats-grid">
-          <article class="stat-card">
-            <PhBookmarkSimple :size="22" class="stat-card__icon" />
-            <span class="stat-card__label">Bookshelves</span>
-            <strong class="stat-card__value">{{ shelves.length }}</strong>
-          </article>
+        <div v-if="!books.length" class="empty-state">
+          Add books to your library before creating bookshelves.
+        </div>
 
-          <article class="stat-card">
-            <PhBookmarkSimple :size="22" class="stat-card__icon stat-card__icon--green" />
-            <span class="stat-card__label">Books shelved</span>
-            <strong class="stat-card__value">{{ totalBooksShelved }}</strong>
-          </article>
-        </section>
-
-        <section class="editor-panel">
-          <div class="section-head">
-            <h2 class="section-title">
-              {{ editingShelfId ? "Edit Bookshelf" : "Add Bookshelf" }}
-            </h2>
-
-            <button
-              v-if="editingShelfId"
-              class="icon-btn"
-              type="button"
-              aria-label="Cancel editing"
-              @click="resetForm"
-            >
-              <PhX :size="17" />
-            </button>
-          </div>
-
-          <div class="shelf-form">
-            <label class="field">
-              <span class="field__label">Category name</span>
-              <input v-model="shelfName" type="text" placeholder="Summer reads" />
-            </label>
-
-            <label class="field">
-              <span class="field__label">Description</span>
-              <input
-                v-model="shelfDescription"
-                type="text"
-                placeholder="Optional description"
-              />
-            </label>
-          </div>
-
-          <div class="book-picker">
-            <div class="book-picker__head">
-              <span class="field__label">Select books</span>
-              <span class="book-picker__count">
-                {{ selectedBookIds.length }} selected
-              </span>
-            </div>
-
-            <div v-if="books.length" class="book-options">
-              <button
-                v-for="book in books"
-                :key="book._id"
-                class="book-option"
-                :class="{ active: selectedBookIds.includes(book._id || '') }"
-                type="button"
-                @click="toggleBook(book._id)"
-              >
-                <span class="checkbox">
-                  <span v-if="selectedBookIds.includes(book._id || '')" />
-                </span>
-                <span class="book-option__text">
-                  <strong>{{ book.title }}</strong>
-                  <small>{{ book.author }}</small>
-                </span>
-              </button>
-            </div>
-
-            <div v-else class="empty-state">
-              Add books to your library before creating bookshelves.
-            </div>
-          </div>
-
-          <p v-if="formError" class="error error--compact" role="alert">
-            {{ formError }}
-          </p>
-
-          <button
-            class="save-btn"
-            type="button"
-            :disabled="saving || !books.length"
-            @click="saveShelf"
+        <div v-if="shelves.length" class="shelf-stack">
+          <section
+            v-for="shelf in shelves"
+            :key="shelf._id"
+            class="shelf-section"
           >
-            <PhPlus v-if="!editingShelfId" :size="18" />
-            {{ saving ? "Saving..." : editingShelfId ? "Save changes" : "Create shelf" }}
-          </button>
-        </section>
-
-        <section class="shelves-section">
-          <div class="section-head">
-            <h2 class="section-title">Your Bookshelves</h2>
-          </div>
-
-          <div v-if="shelves.length" class="shelf-grid">
-            <article v-for="shelf in shelves" :key="shelf._id" class="shelf-card">
-              <div class="shelf-card__head">
-                <div>
-                  <h3 class="shelf-card__title">{{ shelf.name }}</h3>
-                  <p class="shelf-card__meta">
-                    {{ shelf.bookIds.length }} book{{ shelf.bookIds.length === 1 ? "" : "s" }}
-                  </p>
-                </div>
-
-                <div class="row-actions">
+            <div class="shelf-heading">
+              <div>
+                <div class="shelf-title-row">
+                  <h2 class="shelf-title">{{ shelf.name }}</h2>
                   <button
-                    class="icon-btn"
-                    type="button"
-                    aria-label="Edit bookshelf"
-                    @click="startEditShelf(shelf)"
-                  >
+                class="title-icon-btn"
+                type="button"
+                aria-label="Edit bookshelf"
+                @click="startEditShelf(shelf)"
+              >
                     <PhPencilSimple :size="17" />
                   </button>
                   <button
-                    class="icon-btn icon-btn--danger"
+                    class="title-icon-btn title-icon-btn--danger"
                     type="button"
-                    aria-label="Delete bookshelf"
-                    @click="removeShelf(shelf)"
-                  >
+                aria-label="Delete bookshelf"
+                @click="removeShelf(shelf)"
+              >
                     <PhTrash :size="17" />
                   </button>
                 </div>
+
+                <p v-if="shelf.description" class="shelf-description">
+                  {{ shelf.description }}
+                </p>
               </div>
 
-              <p v-if="shelf.description" class="shelf-card__description">
-                {{ shelf.description }}
-              </p>
+              <span class="shelf-count">
+                {{ shelf.bookIds.length }} book{{ shelf.bookIds.length === 1 ? "" : "s" }}
+              </span>
+            </div>
 
-              <div v-if="shelf.bookIds.length" class="shelf-books">
-                <div v-for="book in shelf.bookIds" :key="book._id" class="shelf-book">
-                  <img :src="book.coverImage" :alt="book.title" />
-                  <div>
-                    <strong>{{ book.title }}</strong>
-                    <small>{{ book.author }}</small>
-                  </div>
-                </div>
+            <div v-if="shelf.bookIds.length" class="shelf-rail-wrap">
+              <button
+                v-if="shelf.bookIds.length > 6"
+                class="rail-arrow rail-arrow--left"
+                type="button"
+                aria-label="Scroll shelf left"
+                @click="scrollShelf(shelf, 'left')"
+              >
+                <PhCaretLeft :size="28" />
+              </button>
+
+              <div :id="shelfRailId(shelf)" class="book-rail">
+                <article v-for="book in shelf.bookIds" :key="book._id" class="shelf-book">
+                  <img :src="book.coverImage" :alt="book.title" class="book-cover" />
+                  <h3 class="book-title">{{ book.title }}</h3>
+                  <p class="book-author">{{ book.author }}</p>
+                </article>
               </div>
 
-              <div v-else class="empty-state empty-state--small">
-                No books selected.
-              </div>
-            </article>
-          </div>
+              <button
+                v-if="shelf.bookIds.length > 6"
+                class="rail-arrow rail-arrow--right"
+                type="button"
+                aria-label="Scroll shelf right"
+                @click="scrollShelf(shelf, 'right')"
+              >
+                <PhCaretRight :size="28" />
+              </button>
+            </div>
 
-          <div v-else class="empty-state">
-            No bookshelves yet.
-          </div>
-        </section>
+            <div v-else class="empty-state empty-state--shelf">
+              No books selected for this shelf.
+            </div>
+          </section>
+        </div>
+
+        <div v-else class="empty-state">
+          No bookshelves yet.
+        </div>
       </template>
+
+      <BookshelfFormModal
+        v-model:open="showShelfModal"
+        :books="books"
+        :mode="editingShelfId ? 'edit' : 'add'"
+        :shelf-name="shelfName"
+        :selected-book-ids="selectedBookIds"
+        :loading="saving"
+        :error="formError"
+        @update:shelf-name="shelfName = $event"
+        @toggle-book="toggleBook"
+        @submit="saveShelf"
+        @close="closeShelfModal"
+      />
     </section>
   </AppShell>
 </template>
 
 <style scoped>
-.bookshelves-page {
+.bookshelf-page {
+  width: 100%;
+  min-width: 0;
   display: grid;
-  gap: 24px;
+  gap: 34px;
+  overflow-x: hidden;
 }
 
-.hero {
+.page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
 }
 
-.hero__title {
-  font-size: clamp(2.4rem, 4vw, 3.8rem);
-  line-height: 1.02;
-  color: var(--text);
-  font-family: ui-serif, Georgia, Cambria, serif;
-}
-
-.hero__subtitle {
-  margin: 8px 0 0;
-  color: var(--text-soft);
-  font-size: 1rem;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.stat-card,
-.editor-panel,
-.shelf-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.stat-card {
-  display: grid;
-  gap: 8px;
-  padding: 20px;
-}
-
-.stat-card__icon {
-  color: var(--accent);
-}
-
-.stat-card__icon--green {
-  color: var(--green);
-}
-
-.stat-card__label {
-  color: var(--text-soft);
-  font-size: 0.92rem;
-  font-weight: 700;
-}
-
-.stat-card__value {
-  color: var(--text);
-  font-family: ui-serif, Georgia, Cambria, serif;
-  font-size: 2rem;
-  line-height: 1;
-}
-
-.editor-panel {
-  display: grid;
-  gap: 16px;
-  padding: 22px;
-}
-
-.section-head,
-.shelf-card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.section-title,
-.shelf-card__title {
+.page-title {
   margin: 0;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: 0;
   color: var(--text);
   font-family: ui-serif, Georgia, Cambria, serif;
 }
 
-.section-title {
-  font-size: 1.8rem;
-  line-height: 1.1;
-}
-
-.shelf-card__title {
-  font-size: 1.35rem;
-}
-
-.shelf-form {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.8fr) 1fr;
-  gap: 12px;
-}
-
-.field {
-  display: grid;
-  gap: 8px;
-}
-
-.field__label {
-  color: var(--text-soft);
-  font-size: 0.9rem;
-  font-weight: 800;
-}
-
-input {
-  width: 100%;
-  height: 44px;
-  padding: 0 13px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: white;
-  color: var(--text);
-  font: inherit;
-  outline: none;
-}
-
-input:focus {
-  border-color: rgba(126, 151, 118, 0.7);
-  box-shadow: 0 0 0 4px rgba(126, 151, 118, 0.12);
-}
-
-.book-picker {
-  display: grid;
-  gap: 10px;
-}
-
-.book-picker__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.book-picker__count,
-.shelf-card__meta,
-.shelf-card__description {
-  color: var(--text-soft);
-  font-size: 0.92rem;
-}
-
-.book-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  max-height: 280px;
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.book-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: white;
-  color: var(--text);
-  cursor: pointer;
-  text-align: left;
-}
-
-.book-option.active {
-  border-color: rgba(126, 151, 118, 0.7);
-  background: var(--green-soft);
-}
-
-.checkbox {
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: white;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-}
-
-.checkbox span {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--green);
-}
-
-.book-option__text,
-.shelf-book div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.book-option__text strong,
-.shelf-book strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.book-option__text small,
-.shelf-book small {
-  color: var(--text-soft);
-}
-
-.save-btn {
-  width: fit-content;
-  min-width: 142px;
-  height: 44px;
+.add-shelf-btn {
+  min-width: 112px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 0 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--green);
-  color: white;
+  color: #fff;
   cursor: pointer;
+  font-size: 12px;
   font-weight: 800;
 }
 
-.save-btn:disabled {
+.add-shelf-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
 
-.shelves-section {
+.shelf-stack {
   display: grid;
-  gap: 14px;
+  gap: 46px;
 }
 
-.shelf-grid {
+.shelf-section {
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 24px;
+  padding-bottom: 44px;
+  border-bottom: 4px solid rgba(231, 222, 210, 0.55);
 }
 
-.shelf-card {
-  display: grid;
-  gap: 14px;
-  padding: 20px;
+.shelf-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
 }
 
-.shelf-card__meta {
-  margin: 5px 0 0;
-}
-
-.shelf-card__description {
-  margin: 0;
-}
-
-.row-actions {
+.shelf-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.icon-btn {
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: #8f7d6d;
-  cursor: pointer;
+.shelf-title {
+  margin: 0;
+  color: #17120d;
+  font-size: 28px;
+  line-height: 1.05;
+  font-weight: 900;
+}
+
+.shelf-description {
+  margin: 8px 0 0;
+  max-width: 64ch;
+  color: var(--text-soft);
+  font-size: 1rem;
+}
+
+.shelf-count {
+  color: var(--text-soft);
+  font-size: 0.98rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.title-icon-btn {
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #c9b8b2;
+  cursor: pointer;
 }
 
-.icon-btn:hover {
+.title-icon-btn:hover {
   background: #f2ede6;
   color: var(--text);
 }
 
-.icon-btn--danger:hover {
+.title-icon-btn--danger:hover {
   color: #b42318;
 }
 
-.shelf-books {
+.shelf-rail-wrap {
+  position: relative;
   display: grid;
-  gap: 10px;
-}
-
-.shelf-book {
-  display: grid;
-  grid-template-columns: 42px 1fr;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   min-width: 0;
 }
 
-.shelf-book img {
-  width: 42px;
-  height: 56px;
-  border-radius: 8px;
-  object-fit: cover;
-  background: #efe9e1;
+.shelf-rail-wrap:has(.rail-arrow) {
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  gap: 12px;
+}
+
+.book-rail {
+  display: grid;
+  min-width: 0;
+  grid-auto-flow: column;
+  grid-auto-columns: 150px;
+  gap: 30px;
+  padding: 2px 0 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.book-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.shelf-book {
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.book-cover {
+  width: 100%;
+  height: 220px;
+  display: block;
+  object-fit: contain;
+  background: #d8d4cf;
+  border-radius: 2px;
+  box-shadow: 0 12px 30px rgba(54, 39, 24, 0.08);
+}
+
+.book-title {
+  margin: 18px 0 0;
+  color: #17120d;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-author {
+  margin: 8px 0 0;
+  color: #433c35;
+  font-size: 1.08rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-arrow {
+  width: 34px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #17120d;
+  cursor: pointer;
+}
+
+.rail-arrow:hover {
+  background: rgba(255, 255, 255, 0.55);
 }
 
 .error {
@@ -650,31 +497,78 @@ input:focus {
   background: #fef3f2;
   border: 1px solid #fecdca;
   color: #b42318;
-  font-size: 0.92rem;
-}
-
-.error--compact {
-  padding: 11px 13px;
+  font-size: 0.95rem;
 }
 
 .empty-state {
-  padding: 22px;
+  padding: 26px;
   border-radius: 16px;
   border: 1px dashed var(--border);
   background: rgba(255, 255, 255, 0.35);
   color: var(--text-soft);
+  font-size: 1rem;
 }
 
-.empty-state--small {
-  padding: 14px;
+.empty-state--shelf {
+  margin-left: 66px;
 }
 
-@media (max-width: 1000px) {
-  .stats-grid,
-  .shelf-form,
-  .book-options,
-  .shelf-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 960px) {
+  .book-rail {
+    grid-auto-columns: 140px;
+    gap: 22px;
+  }
+
+  .book-cover {
+    height: 205px;
+  }
+
+  .shelf-heading {
+    align-items: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .bookshelf-page {
+    gap: 26px;
+  }
+
+  .page-header,
+  .shelf-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .add-shelf-btn {
+    width: 100%;
+  }
+
+  .book-rail {
+    grid-auto-columns: 138px;
+  }
+
+  .shelf-rail-wrap:has(.rail-arrow) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rail-arrow {
+    display: none;
+  }
+
+  .book-cover {
+    height: 203px;
+  }
+
+  .book-title {
+    font-size: 1.12rem;
+  }
+
+  .book-author {
+    font-size: 0.98rem;
+  }
+
+  .empty-state--shelf {
+    margin-left: 0;
   }
 }
 </style>

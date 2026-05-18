@@ -1,31 +1,31 @@
 <script setup lang="ts">
 import { PhX } from "@phosphor-icons/vue";
+import type { Book } from "../services/books";
 
 const open = defineModel<boolean>("open", { default: false });
 
 defineProps<{
+  books: Book[];
   loading?: boolean;
   error?: string;
-  bookTitle?: string;
-  minutesRead: number;
-  pagesRead: number;
-  note: string;
+  mode?: "add" | "edit";
+  shelfName: string;
+  selectedBookIds: string[];
 }>();
 
 defineEmits<{
   (e: "close"): void;
   (e: "submit"): void;
-  (e: "update:minutesRead", value: number): void;
-  (e: "update:pagesRead", value: number): void;
-  (e: "update:note", value: string): void;
+  (e: "toggle-book", value?: string): void;
+  (e: "update:shelfName", value: string): void;
 }>();
 </script>
 
 <template>
   <div v-if="open" class="overlay" @click.self="$emit('close')">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Add reading time">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Add shelf">
       <div class="modal__header">
-        <h2 class="modal__title">Add reading time</h2>
+        <h2 class="modal__title">{{ mode === "edit" ? "Edit shelf" : "Add shelf" }}</h2>
         <button class="close-btn" type="button" aria-label="Close" @click="$emit('close')">
           <PhX :size="18" weight="light" />
         </button>
@@ -34,48 +34,29 @@ defineEmits<{
       <div class="modal__body">
         <div class="form-grid">
           <label class="field">
-            <span class="field__label">Book</span>
-            <input :value="bookTitle" type="text" disabled placeholder="Book name" />
-          </label>
-
-          <div class="form-row">
-            <label class="field">
-              <span class="field__label">Track time</span>
-              <input
-                :value="minutesRead"
-                type="number"
-                min="0"
-                placeholder="Minutes"
-                @input="$emit('update:minutesRead', Number(($event.target as HTMLInputElement).value))"
-              />
-            </label>
-
-            <label class="field">
-              <span class="field__label">&nbsp;</span>
-              <input type="text" value="Today" disabled />
-            </label>
-          </div>
-
-          <label class="field">
-            <span class="field__label">Pages read</span>
+            <span class="field__label">Shelf name</span>
             <input
-              :value="pagesRead"
-              type="number"
-              min="0"
-              placeholder="0"
-              @input="$emit('update:pagesRead', Number(($event.target as HTMLInputElement).value))"
-            />
-          </label>
-
-          <label class="field">
-            <span class="field__label">Notes</span>
-            <input
-              :value="note"
+              :value="shelfName"
               type="text"
-              placeholder="Optional note"
-              @input="$emit('update:note', ($event.target as HTMLInputElement).value)"
+              placeholder="Enter name"
+              @input="$emit('update:shelfName', ($event.target as HTMLInputElement).value)"
             />
           </label>
+
+          <div class="field">
+            <span class="field__label">Books</span>
+            <div v-if="books.length" class="book-list">
+              <label v-for="book in books" :key="book._id" class="book-check">
+                <input
+                  type="checkbox"
+                  :checked="selectedBookIds.includes(book._id || '')"
+                  @change="$emit('toggle-book', book._id)"
+                />
+                <span>{{ book.title }}</span>
+              </label>
+            </div>
+            <div v-else class="empty-state">Add books before creating shelves.</div>
+          </div>
         </div>
 
         <p v-if="error" class="error" role="alert">{{ error }}</p>
@@ -85,8 +66,8 @@ defineEmits<{
         <button class="btn btn--ghost" type="button" @click="$emit('close')">
           Cancel
         </button>
-        <button class="btn btn--primary" type="button" :disabled="loading" @click="$emit('submit')">
-          {{ loading ? "Saving..." : "Save" }}
+        <button class="btn btn--primary" type="button" :disabled="loading || !books.length" @click="$emit('submit')">
+          {{ loading ? "Saving..." : mode === "edit" ? "Save" : "Add" }}
         </button>
       </div>
     </div>
@@ -151,12 +132,6 @@ defineEmits<{
   gap: 18px;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
 .field {
   display: grid;
   gap: 10px;
@@ -168,7 +143,7 @@ defineEmits<{
   color: #4c463f;
 }
 
-input {
+input[type="text"] {
   width: 100%;
   height: 46px;
   border: 1px solid #ece8e3;
@@ -181,29 +156,56 @@ input {
   outline: none;
 }
 
-input:disabled {
-  color: #8f877f;
-  background: #faf9f7;
-  cursor: not-allowed;
-}
-
 input::placeholder {
   color: #b8aea4;
 }
 
-input:focus {
+input[type="text"]:focus {
   border-color: rgba(126, 151, 118, 0.75);
   box-shadow: 0 0 0 3px rgba(126, 151, 118, 0.12);
 }
 
-.error {
-  margin: 18px 0 0;
+.book-list {
+  display: grid;
+  gap: 10px;
+  max-height: 180px;
+  overflow: auto;
+  padding: 2px 0;
+}
+
+.book-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #4c463f;
+  font-size: 1rem;
+}
+
+.book-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: #7e9776;
+}
+
+.error,
+.empty-state {
+  margin: 0;
   padding: 12px 14px;
   border-radius: 7px;
+  font-size: 0.95rem;
+}
+
+.error {
+  margin-top: 18px;
   background: #fef3f2;
   border: 1px solid #fecdca;
   color: #b42318;
-  font-size: 0.95rem;
+}
+
+.empty-state {
+  background: #faf9f7;
+  border: 1px dashed #ece8e3;
+  color: #8f877f;
 }
 
 .modal__footer {
@@ -236,16 +238,6 @@ input:focus {
 
 .btn:disabled {
   opacity: 0.7;
-  cursor: wait;
-}
-
-@media (max-width: 520px) {
-  .overlay {
-    padding: 12px;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-  }
+  cursor: not-allowed;
 }
 </style>

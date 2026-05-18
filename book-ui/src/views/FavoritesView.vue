@@ -80,13 +80,15 @@ onMounted(loadBooks);
 }
 
 .hero {
-  padding: 8px 0 18px;
+  padding: 0 0 18px;
 }
 
 .hero__title {
   margin: 0;
-  font-size: 46px;
-  letter-spacing: -0.03em;
+  font-size: 32px;
+  line-height: 1.02;
+  letter-spacing: 0;
+  color: var(--text);
   font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 

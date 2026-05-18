@@ -5,10 +5,6 @@
     </aside>
 
     <div class="shell__main">
-      <header class="shell__topbar">
-        <span>Your reading companion</span>
-      </header>
-
       <main class="shell__content">
         <slot />
       </main>
@@ -36,23 +32,15 @@
 .shell__main {
   margin-left: var(--sidebar-width);
   height: 100vh;
-  display: grid;
-  grid-template-rows: 56px 1fr;
   min-width: 0;
-}
-
-.shell__topbar {
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
-  color: var(--text-soft);
-  font-size: 0.9rem;
-  background: var(--bg);
+  overflow: hidden;
 }
 
 .shell__content {
+  height: 100vh;
   overflow-y: auto;
-  padding: 38px 36px 48px;
+  overflow-x: hidden;
+  padding: 34px 36px 48px;
   min-width: 0;
 }
 </style>

@@ -3,10 +3,10 @@ import { computed } from "vue";
 import {
   PhPencilSimple,
   PhTrash,
-  PhArrowClockwise,
+  PhCaretDown,
   PhPlus,
 } from "@phosphor-icons/vue";
-import type { Book } from "../services/books";
+import type { Book, ReadingStatus } from "../services/books";
 
 const props = defineProps<{
   book: Book;
@@ -15,9 +15,15 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "delete-book", book: Book): void;
   (e: "edit-book", book: Book): void;
-  (e: "cycle-status", book: Book): void;
+  (e: "change-status", book: Book, status: ReadingStatus): void;
   (e: "add-time", book: Book): void;
 }>();
+
+const statusOptions: { value: ReadingStatus; label: string }[] = [
+  { value: "want-to-read", label: "Want to read" },
+  { value: "currently-reading", label: "Currently reading" },
+  { value: "finished", label: "Finished" },
+];
 
 const progressPercent = computed(() => {
   const total = props.book.totalPages ?? 0;
@@ -26,12 +32,6 @@ const progressPercent = computed(() => {
   if (total <= 0) return 0;
 
   return Math.min(100, Math.round((current / total) * 100));
-});
-
-const statusLabel = computed(() => {
-  if (props.book.status === "want-to-read") return "Want to read";
-  if (props.book.status === "currently-reading") return "Currently reading";
-  return "Finished";
 });
 
 const statusClass = computed(() => {
@@ -83,18 +83,20 @@ const canAddTime = computed(() => {
 
       <div class="status-row">
         <div class="status-group">
-          <span class="status-badge" :class="statusClass">
-            {{ statusLabel }}
-          </span>
-
-          <button
-            class="switch-status-btn"
-            type="button"
-            @click="$emit('cycle-status', book)"
-            aria-label="Change status"
-          >
-            <PhArrowClockwise :size="16" />
-          </button>
+          <div class="status-select-wrap">
+            <select
+              class="status-select"
+              :class="statusClass"
+              :value="book.status"
+              aria-label="Change reading status"
+              @change="$emit('change-status', book, ($event.target as HTMLSelectElement).value as ReadingStatus)"
+            >
+              <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+            <PhCaretDown :size="14" class="status-select-icon" />
+          </div>
         </div>
 
         <p v-if="showDeadline" class="deadline">
@@ -221,44 +223,47 @@ const canAddTime = computed(() => {
   gap: 10px;
 }
 
-.status-badge {
+.status-select-wrap {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 0.5rem 0.9rem;
+}
+
+.status-select {
+  appearance: none;
+  border: none;
   border-radius: 999px;
+  padding: 0.5rem 2rem 0.5rem 0.9rem;
   font-size: 0.84rem;
   font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+}
+
+.status-select-icon {
+  position: absolute;
+  right: 0.72rem;
+  pointer-events: none;
+}
+
+.status-select:focus {
+  box-shadow: 0 0 0 3px rgba(126, 151, 118, 0.16);
 }
 
 .status-badge--want {
-  background: #f7efe2;
-  color: #a2762d;
+  background: #ece9e4;
+  color: #6f665e;
 }
 
 .status-badge--reading {
-  background: #e5f1de;
-  color: #6f9165;
+  background: #fff3c4;
+  color: #8a6414;
 }
 
 .status-badge--finished {
   background: #d8efcf;
   color: #5f8b55;
-}
-
-.switch-status-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: #9b7b3f;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  border-radius: 999px;
-}
-
-.switch-status-btn:hover {
-  background: #f5f1ea;
 }
 
 .deadline {

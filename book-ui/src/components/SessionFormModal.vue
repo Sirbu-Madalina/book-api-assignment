@@ -1,58 +1,33 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { PhX } from "@phosphor-icons/vue";
-import type { CreateBookInput, ReadingStatus } from "../services/books";
+import type { Book } from "../services/books";
 
 const open = defineModel<boolean>("open", { default: false });
 
-const model = defineModel<CreateBookInput>({
-  default: () => ({
-    title: "",
-    author: "",
-    coverImage: "https://placehold.co/320x480/f3e2d5/4b3527?text=Book",
-    description: "",
-    totalPages: 1,
-    currentPage: 0,
-    status: "want-to-read",
-    targetDate: "",
-    isFavorite: false,
-  }),
-});
-
-const props = withDefaults(
-  defineProps<{
-    loading?: boolean;
-    error?: string;
-    mode?: "add" | "edit";
-  }>(),
-  { mode: "add" },
-);
-
-defineEmits<{
-  (e: "submit"): void;
-  (e: "close"): void;
+defineProps<{
+  books: Book[];
+  loading?: boolean;
+  error?: string;
+  mode?: "add" | "edit";
+  selectedBookId: string;
+  minutesRead: number;
+  pagesRead: number;
 }>();
 
-const statusOptions: { value: ReadingStatus; label: string }[] = [
-  { value: "want-to-read", label: "Want to read" },
-  { value: "currently-reading", label: "Currently reading" },
-  { value: "finished", label: "Finished" },
-];
-
-const modalTitle = computed(() =>
-  props.mode === "edit" ? "Edit book" : "Add new book",
-);
-
-const submitLabel = computed(() =>
-  props.mode === "edit" ? "Save" : "Create",
-);
+defineEmits<{
+  (e: "close"): void;
+  (e: "submit"): void;
+  (e: "update:selectedBookId", value: string): void;
+  (e: "update:minutesRead", value: number): void;
+  (e: "update:pagesRead", value: number): void;
+}>();
 </script>
 
 <template>
   <div v-if="open" class="overlay" @click.self="$emit('close')">
-    <div class="modal" role="dialog" aria-modal="true" :aria-label="modalTitle">
+    <div class="modal" role="dialog" aria-modal="true" :aria-label="mode === 'edit' ? 'Edit session' : 'Add session'">
       <div class="modal__header">
-        <h2 class="modal__title">{{ modalTitle }}</h2>
+        <h2 class="modal__title">{{ mode === "edit" ? "Edit session" : "Add session" }}</h2>
         <button class="close-btn" type="button" aria-label="Close" @click="$emit('close')">
           <PhX :size="18" weight="light" />
         </button>
@@ -61,46 +36,58 @@ const submitLabel = computed(() =>
       <div class="modal__body">
         <div class="form-grid">
           <label class="field">
-            <span class="field__label">Title</span>
-            <input v-model="model.title" type="text" placeholder="Enter book title" />
-          </label>
-
-          <label class="field">
-            <span class="field__label">Author</span>
-            <input v-model="model.author" type="text" placeholder="Enter author name" />
+            <span class="field__label">Book</span>
+            <select
+              :value="selectedBookId"
+              @change="$emit('update:selectedBookId', ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="" disabled>Select book</option>
+              <option v-for="book in books" :key="book._id" :value="book._id">
+                {{ book.title }}
+              </option>
+            </select>
           </label>
 
           <div class="form-row">
             <label class="field">
-              <span class="field__label">Total pages</span>
-              <input v-model.number="model.totalPages" type="number" min="1" placeholder="0" />
+              <span class="field__label">Track time</span>
+              <input
+                :value="minutesRead"
+                type="number"
+                min="0"
+                placeholder="Minutes"
+                @input="$emit('update:minutesRead', Number(($event.target as HTMLInputElement).value))"
+              />
             </label>
 
             <label class="field">
-              <span class="field__label">Status</span>
-              <select v-model="model.status">
-                <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
+              <span class="field__label">&nbsp;</span>
+              <input type="text" value="Today" disabled />
             </label>
           </div>
 
           <label class="field">
-            <span class="field__label">Deadline <span>(Optional)</span></span>
-            <input v-model="model.targetDate" type="date" />
+            <span class="field__label">Page number</span>
+            <input
+              :value="pagesRead"
+              type="number"
+              min="0"
+              placeholder="0"
+              @input="$emit('update:pagesRead', Number(($event.target as HTMLInputElement).value))"
+            />
           </label>
+
         </div>
 
-        <p v-if="props.error" class="error" role="alert">{{ props.error }}</p>
+        <p v-if="error" class="error" role="alert">{{ error }}</p>
       </div>
 
       <div class="modal__footer">
         <button class="btn btn--ghost" type="button" @click="$emit('close')">
           Cancel
         </button>
-        <button class="btn btn--primary" type="button" :disabled="props.loading" @click="$emit('submit')">
-          {{ props.loading ? "Saving..." : submitLabel }}
+        <button class="btn btn--primary" type="button" :disabled="loading" @click="$emit('submit')">
+          {{ loading ? "Saving..." : mode === "edit" ? "Save" : "Add" }}
         </button>
       </div>
     </div>
@@ -182,11 +169,6 @@ const submitLabel = computed(() =>
   color: #4c463f;
 }
 
-.field__label span {
-  color: #9d948b;
-  font-weight: 700;
-}
-
 input,
 select {
   width: 100%;
@@ -199,6 +181,11 @@ select {
   font-size: 1rem;
   color: #2f2a25;
   outline: none;
+}
+
+input:disabled {
+  color: #8f877f;
+  background: #faf9f7;
 }
 
 input::placeholder {
