@@ -6,7 +6,13 @@ import {
   updateBookById,
   deleteBookById,
 } from "./controllers/bookController";
-import { registerUser, loginUser, verifyToken } from "./controllers/authController";
+import {
+  forgotPassword,
+  loginUser,
+  registerUser,
+  resetPassword,
+  verifyToken,
+} from "./controllers/authController";
 import {
   createReadingSession,
   getReadingSessions,
@@ -89,6 +95,8 @@ router.post("/user/register", registerUser);
  *         description: Server error
  */
 router.post("/user/login", loginUser);
+router.post("/user/forgot-password", forgotPassword);
+router.post("/user/reset-password", resetPassword);
 
 // Book routes
 

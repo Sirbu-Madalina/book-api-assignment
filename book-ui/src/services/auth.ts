@@ -29,6 +29,20 @@ export async function register(name: string, email: string, password: string) {
   });
 }
 
+export async function requestPasswordReset(email: string) {
+  return apiFetch("/user/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(token: string, password: string) {
+  return apiFetch("/user/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+}
+
 export function logout() {
   localStorage.removeItem("token");
   localStorage.removeItem("userId");

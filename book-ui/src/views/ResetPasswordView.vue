@@ -1,35 +1,38 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import { PhEye, PhEyeSlash } from "@phosphor-icons/vue";
-import { login, register } from "../services/auth";
-import { useRouter } from "vue-router";
+import { resetPassword } from "../services/auth";
 import logoImg from "../assets/logo.png";
 
+const route = useRoute();
 const router = useRouter();
 
-const mode = ref<"login" | "register">("login");
-const name = ref("");
-const email = ref("");
 const password = ref("");
 const showPassword = ref(false);
-
 const error = ref("");
+const message = ref("");
 const loading = ref(false);
+
+const token = computed(() => String(route.query.token ?? ""));
 
 async function submit() {
   error.value = "";
+  message.value = "";
+
+  if (!token.value) {
+    error.value = "Password reset link is missing a token.";
+    return;
+  }
+
   loading.value = true;
 
   try {
-    if (mode.value === "register") {
-      await register(name.value, email.value, password.value);
-      mode.value = "login";
-    } else {
-      await login(email.value, password.value);
-      router.push("/");
-    }
+    await resetPassword(token.value, password.value);
+    message.value = "Password reset successfully. Redirecting to sign in...";
+    setTimeout(() => router.push("/login"), 1200);
   } catch (e: any) {
-    error.value = e?.message || "Something went wrong";
+    error.value = e?.message || "Could not reset password.";
   } finally {
     loading.value = false;
   }
@@ -38,67 +41,35 @@ async function submit() {
 
 <template>
   <main class="auth">
-    <!-- Left -->
     <section class="auth__brand">
       <div class="brand">
         <img :src="logoImg" alt="PageTurn logo" class="brand__logo" />
-
-        <h1 class="brand__title">Your Personal Library</h1>
+        <h1 class="brand__title">Choose a New Password</h1>
         <p class="brand__subtitle">
-          Catalog, discover, and organize your book collection with ease.
+          Keep it memorable, but not obvious.
         </p>
       </div>
     </section>
 
-    <!-- Right -->
     <section class="auth__panel">
       <div class="panel">
         <header class="panel__head">
-          <h2 class="panel__title">
-            {{ mode === "login" ? "Welcome back" : "Create your account" }}
-          </h2>
-          <p class="panel__desc">
-            {{
-              mode === "login"
-                ? "Sign in to access your collection"
-                : "Register to start building your collection"
-            }}
-          </p>
+          <h2 class="panel__title">Reset password</h2>
+          <p class="panel__desc">Enter your new PageTurn password.</p>
         </header>
 
         <form class="form" @submit.prevent="submit">
-          <div v-if="mode === 'register'" class="field">
-            <label for="name">Name</label>
-            <input
-              id="name"
-              v-model="name"
-              type="text"
-              placeholder="Your name"
-              autocomplete="name"
-            />
-          </div>
-
           <div class="field">
-            <label for="email">Email</label>
-            <input
-              id="email"
-              v-model="email"
-              type="email"
-              placeholder="you@example.com"
-              autocomplete="email"
-            />
-          </div>
-
-          <div class="field">
-            <label for="password">Password</label>
+            <label for="password">New password</label>
             <div class="password-field">
-            <input
-              id="password"
-              v-model="password"
-              :type="showPassword ? 'text' : 'password'"
-              placeholder="••••••••"
-              :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
-            />
+              <input
+                id="password"
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="New password"
+                autocomplete="new-password"
+                required
+              />
               <button
                 class="password-toggle"
                 type="button"
@@ -111,38 +82,14 @@ async function submit() {
             </div>
           </div>
 
-          <RouterLink
-            v-if="mode === 'login'"
-            class="forgot-link"
-            to="/forgot-password"
-          >
-            Forgot password?
-          </RouterLink>
-
           <p v-if="error" class="error">{{ error }}</p>
+          <p v-if="message" class="success">{{ message }}</p>
 
           <button class="btn" type="submit" :disabled="loading">
-            {{
-              loading
-                ? "Please wait..."
-                : mode === "login"
-                  ? "Sign In"
-                  : "Create account"
-            }}
+            {{ loading ? "Saving..." : "Reset password" }}
           </button>
 
-          <p class="switch">
-            <span v-if="mode === 'login'">Don't have an account?</span>
-            <span v-else>Already have an account?</span>
-
-            <button
-              type="button"
-              class="link"
-              @click="mode = mode === 'login' ? 'register' : 'login'"
-            >
-              {{ mode === "login" ? "Create one" : "Sign in" }}
-            </button>
-          </p>
+          <RouterLink class="back-link" to="/login">Back to sign in</RouterLink>
         </form>
       </div>
     </section>
@@ -152,7 +99,6 @@ async function submit() {
 <style scoped>
 .auth {
   --green: #7e9776;
-  --green-soft: #dbe5d7;
   --bg-left: #e9e2d8;
   --bg-right: #f7f3ee;
   --text: #1f2430;
@@ -163,7 +109,6 @@ async function submit() {
   grid-template-columns: 1.1fr 1fr;
 }
 
-/* LEFT */
 .auth__brand {
   background: var(--bg-left);
   display: grid;
@@ -180,17 +125,21 @@ async function submit() {
   margin-bottom: 16px;
 }
 
+.brand__title,
+.panel__title {
+  font-family: ui-serif, Georgia, serif;
+}
+
 .brand__title {
   font-size: 42px;
-  font-family: ui-serif, Georgia, serif;
   margin-bottom: 10px;
 }
 
-.brand__subtitle {
+.brand__subtitle,
+.panel__desc {
   color: var(--muted);
 }
 
-/* RIGHT */
 .auth__panel {
   background: var(--bg-right);
   display: grid;
@@ -203,22 +152,22 @@ async function submit() {
 
 .panel__title {
   font-size: 32px;
-  font-family: ui-serif, Georgia, serif;
 }
 
 .panel__desc {
-  color: var(--muted);
   margin-bottom: 20px;
 }
 
-/* FORM */
-.form {
+.form,
+.field {
   display: grid;
+}
+
+.form {
   gap: 14px;
 }
 
 .field {
-  display: grid;
   gap: 6px;
 }
 
@@ -267,7 +216,6 @@ input:focus {
   color: var(--green);
 }
 
-/* BUTTON */
 .btn {
   height: 46px;
   border-radius: 12px;
@@ -278,40 +226,32 @@ input:focus {
   cursor: pointer;
 }
 
-.btn:hover {
-  background: #6e8966;
+.btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
-/* TEXT */
-.switch {
+.error,
+.success,
+.back-link {
+  font-size: 13px;
+}
+
+.error {
+  color: #b42318;
+}
+
+.success {
+  color: #4f7f45;
+}
+
+.back-link {
+  color: var(--green);
+  font-weight: 600;
   text-align: center;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.link {
-  background: none;
-  border: none;
-  color: var(--green);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.forgot-link {
-  justify-self: end;
-  color: var(--green);
-  font-size: 13px;
-  font-weight: 600;
   text-decoration: none;
 }
 
-/* ERROR */
-.error {
-  color: #b42318;
-  font-size: 13px;
-}
-
-/* MOBILE */
 @media (max-width: 900px) {
   .auth {
     grid-template-columns: 1fr;

@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { userModel } from "../models/userModel";
 import { connect } from "../repository/database";
@@ -79,4 +80,48 @@ export async function loginUserService(input: LoginInput) {
 // Shared token verification helper used by auth middleware/controllers
 export function verifyJwtToken(token: string) {
   return jwt.verify(token, process.env.TOKEN_SECRET as string);
+}
+
+function hashResetToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+export async function createPasswordResetService(email: string) {
+  await connect();
+
+  const user = await userModel.findOne({ email });
+
+  if (!user) {
+    return null;
+  }
+
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  user.passwordResetToken = hashResetToken(resetToken);
+  user.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000);
+
+  await user.save();
+
+  return resetToken;
+}
+
+export async function resetPasswordService(token: string, password: string) {
+  await connect();
+
+  const user = await userModel.findOne({
+    passwordResetToken: hashResetToken(token),
+    passwordResetExpires: { $gt: new Date() },
+  });
+
+  if (!user) {
+    const err: any = new Error("Password reset link is invalid or expired.");
+    err.status = 400;
+    throw err;
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  user.password = await bcrypt.hash(password, salt);
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+
+  await user.save();
 }
