@@ -3,6 +3,7 @@ import { type Request, type Response, type NextFunction } from "express";
 import Joi, { ValidationResult } from "joi";
 import { User } from "../interfaces/user";
 import * as authService from "../services/authService";
+import { sendPasswordResetEmail } from "../services/mailService";
 
 export type AuthRequest = Request & {
   user?: {
@@ -80,6 +81,53 @@ export async function loginUser(req: Request, res: Response) {
   }
 }
 
+export async function forgotPassword(req: Request, res: Response) {
+  const { error } = validateForgotPasswordInfo(req.body);
+  if (error) {
+    res.status(400).json({ error: error.details[0].message });
+    return;
+  }
+
+  try {
+    const resetToken = await authService.createPasswordResetService(req.body.email);
+
+    if (resetToken) {
+      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
+      const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+      await sendPasswordResetEmail({
+        to: req.body.email,
+        resetLink,
+      });
+      console.log("Password reset link:", resetLink);
+    }
+
+    res.status(200).json({
+      message: "If that email exists, a password reset link has been created.",
+    });
+  } catch (err: any) {
+    res.status(err.status || 500).json({
+      error: err.message || "Error creating password reset link",
+    });
+  }
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  const { error } = validateResetPasswordInfo(req.body);
+  if (error) {
+    res.status(400).json({ error: error.details[0].message });
+    return;
+  }
+
+  try {
+    await authService.resetPasswordService(req.body.token, req.body.password);
+    res.status(200).json({ message: "Password has been reset successfully." });
+  } catch (err: any) {
+    res.status(err.status || 500).json({
+      error: err.message || "Error resetting password",
+    });
+  }
+}
+
 // This function validates the registration input using Joi.
 export function validateUserRegistrationInfo(data: User): ValidationResult {
   const schema = Joi.object({
@@ -95,6 +143,26 @@ export function validateUserRegistrationInfo(data: User): ValidationResult {
 export function validateUserLoginInfo(data: User): ValidationResult {
   const schema = Joi.object({
     email: Joi.string().email().min(6).max(255).required(),
+    password: Joi.string().min(6).max(25).required(),
+  });
+
+  return schema.validate(data);
+}
+
+export function validateForgotPasswordInfo(data: { email: string }): ValidationResult {
+  const schema = Joi.object({
+    email: Joi.string().email().min(6).max(255).required(),
+  });
+
+  return schema.validate(data);
+}
+
+export function validateResetPasswordInfo(data: {
+  token: string;
+  password: string;
+}): ValidationResult {
+  const schema = Joi.object({
+    token: Joi.string().required(),
     password: Joi.string().min(6).max(25).required(),
   });
 

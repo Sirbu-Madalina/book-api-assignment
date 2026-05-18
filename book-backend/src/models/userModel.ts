@@ -7,6 +7,8 @@ const userSchema = new Schema<User>({
   email: {type: String, required: true, unique: true, min: 6, max: 255},
   password: {type: String, required: true, min: 6, max: 1024},
   yearlyReadingGoal: { type: Number, default: 12, min: 1 },
+  passwordResetToken: { type: String },
+  passwordResetExpires: { type: Date },
 });
 
 // Export the model

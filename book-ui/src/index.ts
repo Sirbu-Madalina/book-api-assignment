@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "./views/HomeView.vue";
 import LoginView from "./views/LoginView.vue";
+import ForgotPasswordView from "./views/ForgotPasswordView.vue";
+import ResetPasswordView from "./views/ResetPasswordView.vue";
 import { isLoggedIn } from "./services/auth";
 import FavoritesView from "./views/FavoritesView.vue";
 import MyLibraryView from "./views/MyLibraryView.vue";
@@ -15,6 +17,16 @@ export const router = createRouter({
     {
       path: "/login",
       component: LoginView,
+      meta: { layout: "auth" },
+    },
+    {
+      path: "/forgot-password",
+      component: ForgotPasswordView,
+      meta: { layout: "auth" },
+    },
+    {
+      path: "/reset-password",
+      component: ResetPasswordView,
       meta: { layout: "auth" },
     },
     {
@@ -55,7 +67,10 @@ router.beforeEach((to) => {
     return "/login";
   }
 
-  if (logged && to.path === "/login") {
+  if (
+    logged &&
+    ["/login", "/forgot-password", "/reset-password"].includes(to.path)
+  ) {
     return "/";
   }
 
