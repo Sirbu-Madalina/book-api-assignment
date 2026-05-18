@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { PhEye, PhEyeSlash } from "@phosphor-icons/vue";
 import { login, register } from "../services/auth";
 import { useRouter } from "vue-router";
 import logoImg from "../assets/logo.png";
@@ -10,6 +11,7 @@ const mode = ref<"login" | "register">("login");
 const name = ref("");
 const email = ref("");
 const password = ref("");
+const showPassword = ref(false);
 
 const error = ref("");
 const loading = ref(false);
@@ -89,13 +91,24 @@ async function submit() {
 
           <div class="field">
             <label for="password">Password</label>
+            <div class="password-field">
             <input
               id="password"
               v-model="password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               placeholder="••••••••"
-              autocomplete="current-password"
+              :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
             />
+              <button
+                class="password-toggle"
+                type="button"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                @click="showPassword = !showPassword"
+              >
+                <PhEyeSlash v-if="showPassword" :size="22" weight="regular" />
+                <PhEye v-else :size="22" weight="regular" />
+              </button>
+            </div>
           </div>
 
           <p v-if="error" class="error">{{ error }}</p>
@@ -202,16 +215,48 @@ async function submit() {
 }
 
 input {
+  width: 100%;
   height: 44px;
   border-radius: 12px;
   border: 1px solid #ddd;
   padding: 0 12px;
+  box-sizing: border-box;
+  font: inherit;
 }
 
 input:focus {
   outline: none;
   border-color: var(--green);
   box-shadow: 0 0 0 3px rgba(126, 151, 118, 0.2);
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #7c7168;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background: rgba(126, 151, 118, 0.12);
+  color: var(--green);
 }
 
 /* BUTTON */

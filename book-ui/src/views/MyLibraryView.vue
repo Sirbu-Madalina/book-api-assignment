@@ -40,7 +40,7 @@ function emptyForm(): CreateBookInput {
   return {
     title: "",
     author: "",
-    coverImage: "",
+    coverImage: "https://placehold.co/320x480/f3e2d5/4b3527?text=Book",
     description: "",
     totalPages: 1,
     currentPage: 0,
@@ -173,28 +173,24 @@ async function handleDeleteBook(book: Book) {
   }
 }
 
-async function handleCycleStatus(book: Book) {
+async function handleChangeStatus(book: Book, nextStatus: ReadingStatus) {
   if (!book._id) return;
 
-  let nextStatus: ReadingStatus = "want-to-read";
   let updateData: Partial<CreateBookInput> = {};
 
-  if (book.status === "want-to-read") {
-    nextStatus = "currently-reading";
+  if (nextStatus === "currently-reading") {
     updateData = {
       status: nextStatus,
-      startedAt: new Date().toISOString(),
+      startedAt: book.startedAt ?? new Date().toISOString(),
       currentPage: book.currentPage ?? 0,
     };
-  } else if (book.status === "currently-reading") {
-    nextStatus = "finished";
+  } else if (nextStatus === "finished") {
     updateData = {
       status: nextStatus,
       currentPage: book.totalPages,
-      finishedAt: new Date().toISOString(),
+      finishedAt: book.finishedAt ?? new Date().toISOString(),
     };
   } else {
-    nextStatus = "want-to-read";
     updateData = {
       status: nextStatus,
       currentPage: 0,
@@ -342,7 +338,7 @@ onMounted(loadBooks);
           :book="book"
           @delete-book="handleDeleteBook"
           @edit-book="openEditModal"
-          @cycle-status="handleCycleStatus"
+          @change-status="handleChangeStatus"
           @add-time="openAddTimeModal"
         />
       </div>
@@ -385,15 +381,16 @@ onMounted(loadBooks);
 
 .library__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
 }
 
 .library__title {
-  font-size: clamp(2.2rem, 4vw, 3.5rem);
+  margin: 0;
+  font-size: 32px;
   line-height: 1.02;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: var(--text);
   font-family: ui-serif, Georgia, Cambria, serif;
 }
@@ -405,13 +402,20 @@ onMounted(loadBooks);
 }
 
 .add-btn {
-  padding: 13px 18px;
+  min-width: 112px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
   border: none;
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--green);
   color: white;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .toolbar {

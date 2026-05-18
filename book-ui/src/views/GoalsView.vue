@@ -319,9 +319,10 @@ onMounted(loadBooks);
 }
 
 .hero__title {
-  font-size: clamp(2.4rem, 4vw, 3.8rem);
+  margin: 0;
+  font-size: 32px;
   line-height: 1.02;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: var(--text);
   font-family: ui-serif, Georgia, Cambria, serif;
 }

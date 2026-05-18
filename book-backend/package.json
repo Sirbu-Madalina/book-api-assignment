@@ -31,7 +31,8 @@
   "start:server": "node dist/src/app.js",
   "dev": "cross-env NODE_ENV=development nodemon",
   "testdb": "cross-env NODE_ENV=test ts-node src/index.ts",
-  "test": "npx playwright test --reporter=list"
+  "test": "npx playwright test --reporter=list",
+  "seed": "cross-env NODE_ENV=development ts-node src/seed.ts"
 },
   "dependencies": {
     "bcrypt": "^6.0.0",

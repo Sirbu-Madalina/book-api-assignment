@@ -7,11 +7,11 @@ import {
   PhPencilSimple,
   PhPlus,
   PhTrash,
-  PhX,
 } from "@phosphor-icons/vue";
 
 import AppShell from "../components/layout/AppShell.vue";
 import AppSidebar from "../components/layout/AppSidebar.vue";
+import SessionFormModal from "../components/SessionFormModal.vue";
 import { getBooks, type Book } from "../services/books";
 import {
   createReadingSession,
@@ -27,6 +27,8 @@ const loading = ref(false);
 const saving = ref(false);
 const error = ref("");
 const formError = ref("");
+const showSessionModal = ref(false);
+const showEditSessionModal = ref(false);
 
 const selectedBookId = ref("");
 const minutesRead = ref(30);
@@ -36,7 +38,6 @@ const editingSessionId = ref<string | null>(null);
 const editBookId = ref("");
 const editMinutesRead = ref(0);
 const editPagesRead = ref(0);
-const editNote = ref("");
 const editError = ref("");
 
 const selectableBooks = computed(() =>
@@ -89,6 +90,21 @@ function resetForm() {
   minutesRead.value = 30;
   pagesRead.value = 10;
   note.value = "";
+}
+
+function openSessionModal() {
+  formError.value = "";
+
+  if (!selectedBookId.value && selectableBooks.value[0]?._id) {
+    selectedBookId.value = selectableBooks.value[0]._id;
+  }
+
+  showSessionModal.value = true;
+}
+
+function closeSessionModal() {
+  formError.value = "";
+  showSessionModal.value = false;
 }
 
 async function loadSessionsPage() {
@@ -166,6 +182,7 @@ async function saveSession() {
     sessions.value.unshift(result.session);
     replaceBook(result.book);
     resetForm();
+    closeSessionModal();
   } catch (e: any) {
     formError.value = e?.message || "Could not save reading session.";
   } finally {
@@ -192,8 +209,8 @@ function startEditSession(session: ReadingSession) {
   editBookId.value = session.bookId._id ?? "";
   editMinutesRead.value = session.minutesRead;
   editPagesRead.value = session.pagesRead;
-  editNote.value = session.note ?? "";
   editError.value = "";
+  showEditSessionModal.value = true;
 }
 
 function cancelEditSession() {
@@ -201,8 +218,8 @@ function cancelEditSession() {
   editBookId.value = "";
   editMinutesRead.value = 0;
   editPagesRead.value = 0;
-  editNote.value = "";
   editError.value = "";
+  showEditSessionModal.value = false;
 }
 
 async function saveEditedSession() {
@@ -232,7 +249,6 @@ async function saveEditedSession() {
       bookId: editBookId.value,
       minutesRead: editMinutesRead.value,
       pagesRead: editPagesRead.value,
-      note: editNote.value.trim(),
     });
 
     replaceSession(result.session);
@@ -262,6 +278,16 @@ onMounted(loadSessionsPage);
             Track reading time and review your session history.
           </p>
         </div>
+
+        <button
+          class="save-btn"
+          type="button"
+          :disabled="!selectableBooks.length"
+          @click="openSessionModal"
+        >
+          <PhPlus :size="18" />
+          Add session
+        </button>
       </header>
 
       <p v-if="error" class="error" role="alert">
@@ -294,59 +320,9 @@ onMounted(loadSessionsPage);
           </article>
         </section>
 
-        <section class="tracker-panel">
-          <div class="section-head">
-            <h2 class="section-title">Add Session</h2>
-          </div>
-
-          <div v-if="selectableBooks.length" class="tracker-form">
-            <label class="field field--book">
-              <span class="field__label">Book</span>
-              <select v-model="selectedBookId">
-                <option
-                  v-for="book in selectableBooks"
-                  :key="book._id"
-                  :value="book._id"
-                >
-                  {{ book.title }}
-                </option>
-              </select>
-            </label>
-
-            <label class="field">
-              <span class="field__label">Minutes</span>
-              <input v-model.number="minutesRead" type="number" min="0" />
-            </label>
-
-            <label class="field">
-              <span class="field__label">Pages</span>
-              <input v-model.number="pagesRead" type="number" min="0" />
-            </label>
-
-            <label class="field field--note">
-              <span class="field__label">Note</span>
-              <input v-model="note" type="text" placeholder="Optional note" />
-            </label>
-
-            <button
-              class="save-btn"
-              type="button"
-              :disabled="saving"
-              @click="saveSession"
-            >
-              <PhPlus :size="18" />
-              {{ saving ? "Saving..." : "Save" }}
-            </button>
-          </div>
-
-          <div v-else class="empty-state">
-            Add a book to your library before logging sessions.
-          </div>
-
-          <p v-if="formError" class="error error--compact" role="alert">
-            {{ formError }}
-          </p>
-        </section>
+        <div v-if="!selectableBooks.length" class="empty-state">
+          Add a book to your library before logging sessions.
+        </div>
 
         <section class="sessions-section">
           <div class="section-head">
@@ -359,91 +335,40 @@ onMounted(loadSessionsPage);
               :key="session._id"
               class="session-item"
             >
-              <template v-if="editingSessionId === session._id">
-                <div class="edit-form">
-                  <label class="field">
-                    <span class="field__label">Book</span>
-                    <select v-model="editBookId">
-                      <option v-for="book in books" :key="book._id" :value="book._id">
-                        {{ book.title }}
-                      </option>
-                    </select>
-                  </label>
+              <div class="session-item__main">
+                <h3 class="session-item__title">
+                  {{ session.bookId.title }}
+                </h3>
+                <p class="session-item__meta">
+                  {{ formatDate(session.readAt) }} at
+                  {{ formatTime(session.readAt) }}
+                </p>
+              </div>
 
-                  <label class="field">
-                    <span class="field__label">Minutes</span>
-                    <input v-model.number="editMinutesRead" type="number" min="0" />
-                  </label>
+              <div class="session-item__numbers">
+                <span>{{ session.minutesRead }} min</span>
+                <span>{{ session.pagesRead }} pages</span>
+              </div>
 
-                  <label class="field">
-                    <span class="field__label">Pages</span>
-                    <input v-model.number="editPagesRead" type="number" min="0" />
-                  </label>
+              <div class="row-actions">
+                <button
+                  class="icon-btn"
+                  type="button"
+                  aria-label="Edit reading session"
+                  @click="startEditSession(session)"
+                >
+                  <PhPencilSimple :size="17" />
+                </button>
 
-                  <label class="field field--note">
-                    <span class="field__label">Note</span>
-                    <input v-model="editNote" type="text" placeholder="Optional note" />
-                  </label>
-
-                  <div class="edit-actions">
-                    <button class="save-btn" type="button" @click="saveEditedSession">
-                      Save
-                    </button>
-                    <button
-                      class="icon-btn"
-                      type="button"
-                      aria-label="Cancel editing"
-                      @click="cancelEditSession"
-                    >
-                      <PhX :size="17" />
-                    </button>
-                  </div>
-
-                  <p v-if="editError" class="error error--compact">
-                    {{ editError }}
-                  </p>
-                </div>
-              </template>
-
-              <template v-else>
-                <div class="session-item__main">
-                  <h3 class="session-item__title">
-                    {{ session.bookId.title }}
-                  </h3>
-                  <p class="session-item__meta">
-                    {{ formatDate(session.readAt) }} at
-                    {{ formatTime(session.readAt) }}
-                  </p>
-                  <p v-if="session.note" class="session-item__note">
-                    {{ session.note }}
-                  </p>
-                </div>
-
-                <div class="session-item__numbers">
-                  <span>{{ session.minutesRead }} min</span>
-                  <span>{{ session.pagesRead }} pages</span>
-                </div>
-
-                <div class="row-actions">
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    aria-label="Edit reading session"
-                    @click="startEditSession(session)"
-                  >
-                    <PhPencilSimple :size="17" />
-                  </button>
-
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    aria-label="Delete reading session"
-                    @click="removeSession(session)"
-                  >
-                    <PhTrash :size="17" />
-                  </button>
-                </div>
-              </template>
+                <button
+                  class="icon-btn"
+                  type="button"
+                  aria-label="Delete reading session"
+                  @click="removeSession(session)"
+                >
+                  <PhTrash :size="17" />
+                </button>
+              </div>
             </article>
           </div>
 
@@ -452,6 +377,38 @@ onMounted(loadSessionsPage);
           </div>
         </section>
       </template>
+
+      <SessionFormModal
+        v-model:open="showSessionModal"
+        :books="selectableBooks"
+        mode="add"
+        :selected-book-id="selectedBookId"
+        :minutes-read="minutesRead"
+        :pages-read="pagesRead"
+        :loading="saving"
+        :error="formError"
+        @update:selected-book-id="selectedBookId = $event"
+        @update:minutes-read="minutesRead = $event"
+        @update:pages-read="pagesRead = $event"
+        @submit="saveSession"
+        @close="closeSessionModal"
+      />
+
+      <SessionFormModal
+        v-model:open="showEditSessionModal"
+        :books="books"
+        mode="edit"
+        :selected-book-id="editBookId"
+        :minutes-read="editMinutesRead"
+        :pages-read="editPagesRead"
+        :loading="saving"
+        :error="editError"
+        @update:selected-book-id="editBookId = $event"
+        @update:minutes-read="editMinutesRead = $event"
+        @update:pages-read="editPagesRead = $event"
+        @submit="saveEditedSession"
+        @close="cancelEditSession"
+      />
     </section>
   </AppShell>
 </template>
@@ -464,14 +421,16 @@ onMounted(loadSessionsPage);
 
 .hero {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
 }
 
 .hero__title {
-  font-size: clamp(2.4rem, 4vw, 3.8rem);
+  margin: 0;
+  font-size: 32px;
   line-height: 1.02;
+  letter-spacing: 0;
   color: var(--text);
   font-family: ui-serif, Georgia, Cambria, serif;
 }
@@ -489,7 +448,6 @@ onMounted(loadSessionsPage);
 }
 
 .stat-card,
-.tracker-panel,
 .session-list {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -528,12 +486,6 @@ onMounted(loadSessionsPage);
   line-height: 1;
 }
 
-.tracker-panel {
-  display: grid;
-  gap: 16px;
-  padding: 22px;
-}
-
 .section-head {
   display: flex;
   align-items: center;
@@ -547,13 +499,6 @@ onMounted(loadSessionsPage);
   line-height: 1.1;
   color: var(--text);
   font-family: ui-serif, Georgia, Cambria, serif;
-}
-
-.tracker-form {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) repeat(2, minmax(110px, 0.55fr)) minmax(180px, 1fr) auto;
-  gap: 12px;
-  align-items: end;
 }
 
 .field {
@@ -588,6 +533,7 @@ select:focus {
 }
 
 .save-btn {
+  min-width: 112px;
   height: 44px;
   display: inline-flex;
   align-items: center;
@@ -600,6 +546,14 @@ select:focus {
   color: white;
   cursor: pointer;
   font-weight: 800;
+}
+
+.hero > .save-btn {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .save-btn:disabled {
@@ -641,8 +595,7 @@ select:focus {
   font-size: 1.05rem;
 }
 
-.session-item__meta,
-.session-item__note {
+.session-item__meta {
   margin: 0;
   color: var(--text-soft);
   font-size: 0.92rem;
@@ -681,19 +634,10 @@ select:focus {
   color: #b42318;
 }
 
-.row-actions,
-.edit-actions {
+.row-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.edit-form {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) repeat(2, minmax(110px, 0.55fr)) minmax(180px, 1fr) auto;
-  gap: 12px;
-  align-items: end;
 }
 
 .error {
@@ -723,33 +667,16 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
-  .tracker-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .field--book,
   .field--note,
-  .save-btn,
-  .edit-actions {
+  .save-btn {
     grid-column: 1 / -1;
-  }
-
-  .edit-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 760px) {
   .hero,
   .session-item {
-    grid-template-columns: 1fr;
-  }
-
-  .tracker-form {
-    grid-template-columns: 1fr;
-  }
-
-  .edit-form {
     grid-template-columns: 1fr;
   }
 
