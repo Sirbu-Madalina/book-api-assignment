@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build --configLoader runner",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "npm run build && node scripts/run-e2e.cjs"
   },
   "dependencies": {
     "@phosphor-icons/vue": "^2.2.1",
