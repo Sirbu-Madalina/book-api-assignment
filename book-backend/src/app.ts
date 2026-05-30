@@ -29,6 +29,11 @@ function setupCors() {
 
 setupCors();
 app.use(express.json());
+
+app.get("/", (_req, res) => {
+  res.status(200).json({ message: "Book Tracking API is running" });
+});
+
 app.use("/api", routes);
 setupDocs(app);
 
