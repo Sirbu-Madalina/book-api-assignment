@@ -8,8 +8,8 @@ import { connect, disconnect } from "./repository/database";
 dotenvFlow.config();
 
 const demoUser = {
-  name: "Madalina",
-  email: "madalinasirbu197@gmail.com",
+  name: "John Smith",
+  email: "john.smith@example.com",
   password: "12345678",
 };
 
